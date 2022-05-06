@@ -77,10 +77,9 @@ def dump_stream(input_dict):
             if not re.findall(regex, stream_json['description'].lower()):
                 return
 
+    quality = 'best'
     if input_dict['quality']:
         quality = input_dict['quality']
-    else:
-        quality = 'best'
 
     url_name = str_fix(stream_json['uploader'])
     file_title = f'[{date_time("%y-%m-%d %H_%M_%S")}] {url_name} - {url_title}'
