@@ -13,7 +13,7 @@ def json2txt(filepath):
         users[len(users)] = {'username': username, 'id': id, 'badge': badge}
 
     type = ''
-    filename = f'{filepath}_conv.txt'
+    filename = f'{os.path.splitext(filepath)[0]}.conv'
     users = {}
     history = {}
 
