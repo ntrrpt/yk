@@ -17,12 +17,15 @@ import optparse
 threads = []
 unload = False
 
-def pushall_send(title, text, url = ''):
-    # pushall notify (need registration)
-    link = f'https://pushall.ru/api.php?type=self&id={options.pushall_id}&key={options.pushall_key}&ttl=432000&title={title}&text={text}&url={url}'
-
+def ntfy(title, text, url = ''):
+    # https://ntfy.sh/docs
     try:
-        requests.get(link)
+        requests.post(f"https://ntfy.sh/{options.ntfy_id}",
+        data = text.encode('utf-8'),
+        headers = {
+            "title": title,
+            "click": url,
+        })
     except Exception as ex:
         if 'Temporary failure in name resolution' not in str(ex):
             time.sleep(5)
@@ -97,7 +100,7 @@ def dump_stream(input_dict):
 
     # notify
     logging.info(f'[online] ({url_name} - {url_title})')
-    pushall_send(f'{url_name} is online.', f'{url_title}', stream_json['webpage_url'])
+    ntfy(f'{url_name} is online.', f'{url_title}', stream_json['webpage_url'])
 
     # ext stream dump process
     comm_streamlink = ["streamlink",
@@ -158,7 +161,7 @@ def dump_stream(input_dict):
             os.kill(stream_process.pid, signal.SIGTERM)
         else:
             os.waitpid(stream_process.pid, 0)
-            pushall_send(f'{url_name} is offline. [{end_time}]', f'{url_title}', stream_json['webpage_url'])
+            ntfy(f'{url_name} is offline. [{end_time}]', f'{url_title}', stream_json['webpage_url'])
         logging.info(f'[offline] ({url_name} - {url_title}) ({end_time})')
 
     if process_chat.is_running():
@@ -217,8 +220,7 @@ if __name__ == "__main__":
     parser.add_option('-d', '--delay', dest='delay_check', type=int, default='10', help='Streams check delay')
     parser.add_option('-s', '--src', dest='src_name', default='list.txt', help='File with channels/streams')
     parser.add_option('-l', '--log', dest='log_name', default='log.txt', help='Log file')
-    parser.add_option('--key', dest='pushall_key', help='Pushall key')
-    parser.add_option('--id',  dest='pushall_id', help='Pushall id')
+    parser.add_option('-f', '--ntfy', dest='ntfy_id', help='ntfy.sh channel')
     options, arguments = parser.parse_args()
 
     if options.output != '.':
