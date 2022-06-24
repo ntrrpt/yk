@@ -20,12 +20,14 @@ unload = False
 def ntfy(title, text, url = ''):
     # https://ntfy.sh/docs
     try:
-        requests.post(f"https://ntfy.sh/{options.ntfy_id}",
-        data = text.encode('utf-8'),
-        headers = {
-            "title": title,
-            "click": url,
-        })
+        requests.post(
+            "https://ntfy.sh/" + options.ntfy_id,
+            data = text.encode('utf-8'),
+            headers = {
+                "title": title,
+                "click": url
+            }
+        )
     except Exception as ex:
         if 'Temporary failure in name resolution' not in str(ex):
             time.sleep(5)
@@ -41,7 +43,12 @@ def str_fix(string):
 
 def dump_stream(input_dict):
     def dump_stream_json(url):
-        ytdlp_config = {'quiet': True, 'playlist_items': 0, 'noplaylist': True}
+        ytdlp_config = {
+            'quiet': True, 
+            'playlist_items': 0, 
+            'noplaylist': True
+        }
+
         try:
             with yt_dlp.YoutubeDL(ytdlp_config) as ydlp:
                 return ydlp.extract_info(url, download=False)
@@ -67,6 +74,7 @@ def dump_stream(input_dict):
 
     start_time = time.time()
     stream_json = dump_stream_json(input_dict['url'])
+
     if stream_json['extractor'] == "youtube":
         url_title = str_fix(stream_json['title'][:-17])
     elif stream_json['extractor'] == "twitch:stream":
@@ -76,13 +84,12 @@ def dump_stream(input_dict):
 
     if input_dict['regex']:
         regex = input_dict['regex'].lower()
-        if not re.findall(regex, url_title.lower()):
-            if not re.findall(regex, stream_json['description'].lower()):
-                return
 
-    quality = 'best'
-    if input_dict['quality']:
-        quality = input_dict['quality']
+        re_title = re.findall(regex, url_title.lower())
+        re_desc = re.findall(regex, stream_json['description'].lower())
+
+        if not re_title and not re_desc:
+            return
 
     url_name = str_fix(stream_json['uploader'])
     file_title = f'[{date_time("%y-%m-%d %H_%M_%S")}] {url_name} - {url_title}'
@@ -103,55 +110,79 @@ def dump_stream(input_dict):
     ntfy(f'{url_name} is online.', f'{url_title}', stream_json['webpage_url'])
 
     # ext stream dump process
-    comm_streamlink = ["streamlink",
-                        "--output", f"{file_dir}/{file_title}.ts",
-                        "--logfile", f"{file_dir}/{file_title}.log",
-                        "--url", input_dict['url'],
-                        "--fs-safe-rules", "Windows",
-                        "--twitch-disable-ads",
-                        "--http-timeout", "180",
-                        "--hls-live-restart",
-                        "--stream-segment-threads", "2",
-                        "--stream-segment-timeout", "180",
-                        "--stream-segment-attempts", "300",
-                        "--hls-segment-ignore-names", "preloading",
-                        "--hls-playlist-reload-attempts", "30",
-                        "--hls-live-edge", "5",
-                        "--stream-timeout", "120",
-                        "--ringbuffer-size", "64M",
-                        "--loglevel", "trace",
-                        "--default-stream", quality,
-                        "--twitch-disable-hosting"]
+    _comm_streamlink = [
+        "streamlink",
+        "--output", f"{file_dir}/{file_title}.ts",
+        "--logfile", f"{file_dir}/{file_title}.log",
+        "--url", input_dict['url'],
+        "--fs-safe-rules", "Windows",
+        "--twitch-disable-ads",
+        "--http-timeout", "180",
+        "--hls-live-restart",
+        "--stream-segment-threads", "2",
+        "--stream-segment-timeout", "180",
+        "--stream-segment-attempts", "300",
+        "--hls-segment-ignore-names", "preloading",
+        "--hls-playlist-reload-attempts", "30",
+        "--hls-live-edge", "5",
+        "--stream-timeout", "120",
+        "--ringbuffer-size", "64M",
+        "--loglevel", "trace",
+        "--default-stream", input_dict['quality'],
+        "--twitch-disable-hosting"
+    ]
 
-    comm_ytdlp = ["yt-dlp",
-                  input_dict['url'],
-                  "--ignore-config",
-                  "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-                  "--hls-prefer-native",
-                  "--hls-use-mpegts",
-                  "--no-part",
-                  "--retries", "30",
-                  "--verbose",
-                  "--fixup", "warn",
-                  "-o", f"{file_dir}/{file_title}.ts"]
+    _comm_ytdlp = [
+        "yt-dlp",
+        input_dict['url'],
+        "--ignore-config",
+        "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        "--hls-prefer-native",
+        "--hls-use-mpegts",
+        "--no-part",
+        "--retries", "30",
+        "--verbose",
+        "--fixup", "warn",
+        "-o", f"{file_dir}/{file_title}.ts"
+    ]
 
-    stream_process = subprocess.Popen(comm_streamlink, stdout=subprocess.PIPE)
+    # no twitch
+    _comm_yta = [
+        "ytarchive",
+        "--debug",
+        "--thumbnail",
+        "--add-metadata",
+        input_dict['url'],
+        input_dict['quality']
+    ]
+
+    _comm_chat = [
+        'chat_downloader',
+        stream_json['webpage_url'],
+        "--output", f"{file_dir}/{file_title}.json"
+        "--inactivity_timeout", "99999999"
+    ]
+
+    stream_process = subprocess.Popen(_comm_streamlink, stdout=subprocess.PIPE)
 
     # chat saving (need 'chat_downloader' pkg for this)
     txt_chat = open(f"{file_dir}/{file_title}.chat", "w")
-    chat_process = subprocess.Popen(['chat_downloader',
-                                    f"{stream_json['webpage_url']}",
-                                    "--output", f"{file_dir}/{file_title}.json",
-                                    "--inactivity_timeout", "99999999"],
-                                    stdout=txt_chat, stderr=txt_chat)
+    chat_process = subprocess.Popen(_comm_chat, stdout=txt_chat, stderr=txt_chat)                               
 
     process_stream = psutil.Process(stream_process.pid)
     process_chat = psutil.Process(chat_process.pid)
 
     # thread loop until stream ending
     threads.append(input_dict['url'])
-    while not (process_stream.status() == psutil.STATUS_ZOMBIE or not process_stream.is_running()) and not unload:
-        time.sleep(5)
+
+    while not unload:
+        time.sleep(1)
+
+        st_zombie = process_stream.status() == psutil.STATUS_ZOMBIE
+        st_running = process_stream.is_running()
+
+        if st_zombie or not st_running:
+            break
 
     end_time = datetime.timedelta(seconds=int(f'{time.time() - start_time:.{0}f}'))
     txt_chat.close()
@@ -162,6 +193,7 @@ def dump_stream(input_dict):
         else:
             os.waitpid(stream_process.pid, 0)
             ntfy(f'{url_name} is offline. [{end_time}]', f'{url_title}', stream_json['webpage_url'])
+            
         logging.info(f'[offline] ({url_name} - {url_title}) ({end_time})')
 
     if process_chat.is_running():
@@ -190,29 +222,32 @@ def check_live(url):
                 return False
 
 def dump_list(input):
-    lst = {}
+    _list = {}
     with open(input) as file:
         for line in file:
             line = line.rstrip()
             if len(line) > 0 and line[0] != '#':
                 split = line.split()
                 url = split[0]
+                quality = "best"
+                regex = ""
 
                 if len(split) > 1:
-                    quality = split[1]
-                else:
-                    quality = ""
-
+                    quality = split[1]                
+                
                 if len(split) > 2:
-                    regex = split[2]
-                else:
-                    regex = ""
+                    regex = split[2]                   
 
                 if url.find('youtube') != -1 and url.find('watch?v=') == -1:
                     url += '/live'
 
-                lst[len(lst)] = {'url': url, 'regex': regex, 'quality': quality}
-    return lst
+                _list[len(_list)] = {
+                    'url': url, 
+                    'regex': regex, 
+                    'quality': quality
+                }
+
+    return _list
 
 if __name__ == "__main__":
     parser = optparse.OptionParser()
@@ -226,10 +261,15 @@ if __name__ == "__main__":
     if options.output != '.':
         os.makedirs(options.output, exist_ok=True)
 
-    logging.basicConfig(format='%(asctime)s | %(message)s',
-                        datefmt='%y.%m.%d %H:%M:%S',
-                        level=logging.INFO,
-                        handlers=[logging.FileHandler(options.log_name), logging.StreamHandler()])
+    logging.basicConfig(
+        format='%(asctime)s | %(message)s',
+        datefmt='%y.%m.%d %H:%M:%S',
+        level=logging.INFO,
+        handlers=[
+            logging.FileHandler(options.log_name), 
+            logging.StreamHandler()
+        ]
+    )
 
     logging.info('Starting...')
     try:
@@ -245,7 +285,7 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         if threads:
-            unload = True
+            unload = False
             logging.info('Stopping...')
             while threading.active_count() > 1:
                 time.sleep(0.1)
