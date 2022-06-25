@@ -159,7 +159,7 @@ def dump_stream(input_dict):
     _comm_chat = [
         'chat_downloader',
         stream_json['webpage_url'],
-        "--output", f"{file_dir}/{file_title}.json"
+        "--output", f"{file_dir}/{file_title}.json",
         "--inactivity_timeout", "99999999"
     ]
 
