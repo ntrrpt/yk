@@ -44,8 +44,8 @@ def str_fix(string):
 def dump_stream(input_dict):
     def dump_stream_json(url):
         ytdlp_config = {
-            'quiet': True, 
-            'playlist_items': 0, 
+            'quiet': True,
+            'playlist_items': 0,
             'noplaylist': True
         }
 
@@ -77,10 +77,19 @@ def dump_stream(input_dict):
 
     if stream_json['extractor'] == "youtube":
         url_title = str_fix(stream_json['title'][:-17])
+        url_name = str_fix(stream_json['uploader'])
+
     elif stream_json['extractor'] == "twitch:stream":
         url_title = str_fix(stream_json['description'])
+        url_name = str_fix(stream_json['uploader'])
+
+    elif stream_json['extractor'] == "wasdtv:stream":
+        url_title = str_fix(stream_json['fulltitle'])
+        url_name = str_fix(stream_json['webpage_url_basename'])
+
     else:
         url_title = str_fix(stream_json['title'])
+        url_name = str_fix(stream_json['uploader'])
 
     if input_dict['regex']:
         regex = input_dict['regex'].lower()
@@ -91,7 +100,6 @@ def dump_stream(input_dict):
         if not re_title and not re_desc:
             return
 
-    url_name = str_fix(stream_json['uploader'])
     file_title = f'[{date_time("%y-%m-%d %H_%M_%S")}] {url_name} - {url_title}'
     file_dir = f"{options.output}/[live] {file_title.rstrip()}"
 
@@ -167,7 +175,7 @@ def dump_stream(input_dict):
 
     # chat saving (need 'chat_downloader' pkg for this)
     txt_chat = open(f"{file_dir}/{file_title}.chat", "w")
-    chat_process = subprocess.Popen(_comm_chat, stdout=txt_chat, stderr=txt_chat)                               
+    chat_process = subprocess.Popen(_comm_chat, stdout=txt_chat, stderr=txt_chat)
 
     process_stream = psutil.Process(stream_process.pid)
     process_chat = psutil.Process(chat_process.pid)
@@ -193,7 +201,7 @@ def dump_stream(input_dict):
         else:
             os.waitpid(stream_process.pid, 0)
             ntfy(f'{url_name} is offline. [{end_time}]', f'{url_title}', stream_json['webpage_url'])
-            
+
         logging.info(f'[offline] ({url_name} - {url_title}) ({end_time})')
 
     if process_chat.is_running():
@@ -233,17 +241,17 @@ def dump_list(input):
                 regex = ""
 
                 if len(split) > 1:
-                    quality = split[1]                
-                
+                    quality = split[1]
+
                 if len(split) > 2:
-                    regex = split[2]                   
+                    regex = split[2]
 
                 if url.find('youtube') != -1 and url.find('watch?v=') == -1:
                     url += '/live'
 
                 _list[len(_list)] = {
-                    'url': url, 
-                    'regex': regex, 
+                    'url': url,
+                    'regex': regex,
                     'quality': quality
                 }
 
@@ -266,7 +274,7 @@ if __name__ == "__main__":
         datefmt='%y.%m.%d %H:%M:%S',
         level=logging.INFO,
         handlers=[
-            logging.FileHandler(options.log_name), 
+            logging.FileHandler(options.log_name),
             logging.StreamHandler()
         ]
     )
