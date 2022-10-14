@@ -117,11 +117,9 @@ def dump_stream(input_dict):
     logging.info(f'[online] ({url_name} - {url_title})')
     ntfy(f'{url_name} is online.', f'{url_title}', stream_json['webpage_url'])
 
-    # ext stream dump process
-    _comm_streamlink = [
+    _comm_stream = [
         "streamlink",
         "--output", f"{file_dir}/{file_title}.ts",
-        "--logfile", f"{file_dir}/{file_title}.log",
         "--url", input_dict['url'],
         "--fs-safe-rules", "Windows",
         "--twitch-disable-ads",
@@ -140,29 +138,34 @@ def dump_stream(input_dict):
         "--twitch-disable-hosting"
     ]
 
-    _comm_ytdlp = [
-        "yt-dlp",
-        input_dict['url'],
-        "--ignore-config",
-        "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-        "--hls-prefer-native",
-        "--hls-use-mpegts",
-        "--no-part",
-        "--retries", "30",
-        "--verbose",
-        "--fixup", "warn",
-        "-o", f"{file_dir}/{file_title}.ts"
-    ]
+    if options.force_ytdlp:
+        # install ffmpeg!!!   
+        _comm_stream = [
+            "yt-dlp",
+            input_dict['url'],
+            "--ignore-config",
+            "--hls-use-mpegts",
+            "--no-part",
+            "--retries", "30",
+            "--verbose",
+            "-o", f"{file_dir}/{file_title}.ts"
+        ]
 
-    # no twitch
-    _comm_yta = [
-        "ytarchive",
-        "--debug",
-        "--thumbnail",
-        "--add-metadata",
-        input_dict['url'],
-        input_dict['quality']
-    ]
+    if options.force_ytarchive and stream_json['extractor'] == "youtube":
+        # install ffmpeg!!!
+        _comm_stream = [
+            "ytarchive",
+            "--debug", 
+            "--trace", 
+            "--verbose",
+            "--threads", "4",
+            "--add-metadata",
+            "--no-merge", # for slow drives
+            "-o", f"{file_dir}/{file_title}.mp4",
+            "--no-frag-files",
+            input_dict['url'],
+            input_dict['quality']
+        ]
 
     _comm_chat = [
         'chat_downloader',
@@ -171,48 +174,49 @@ def dump_stream(input_dict):
         "--inactivity_timeout", "99999999"
     ]
 
-    stream_process = subprocess.Popen(_comm_streamlink, stdout=subprocess.PIPE)
+    # ext stream dump process
+    txt_stream = open(f"{file_dir}/{file_title}.log", "w")
+    process_stream = subprocess.Popen(_comm_stream, stdout=txt_stream, stderr=txt_stream)
+    pid_stream = psutil.Process(process_stream.pid)
 
     # chat saving (need 'chat_downloader' pkg for this)
     txt_chat = open(f"{file_dir}/{file_title}.chat", "w")
-    chat_process = subprocess.Popen(_comm_chat, stdout=txt_chat, stderr=txt_chat)
-
-    process_stream = psutil.Process(stream_process.pid)
-    process_chat = psutil.Process(chat_process.pid)
+    process_chat = subprocess.Popen(_comm_chat, stdout=txt_chat, stderr=txt_chat)
+    pid_chat = psutil.Process(process_chat.pid)
 
     # thread loop until stream ending
     threads.append(input_dict['url'])
 
     while not unload:
-        time.sleep(1)
+        time.sleep(5)
 
-        st_zombie = process_stream.status() == psutil.STATUS_ZOMBIE
-        st_running = process_stream.is_running()
+        st_zombie = pid_stream.status() == psutil.STATUS_ZOMBIE
+        st_running = pid_stream.is_running()
 
         if st_zombie or not st_running:
             break
 
     end_time = datetime.timedelta(seconds=int(f'{time.time() - start_time:.{0}f}'))
-    txt_chat.close()
+    threads.remove(input_dict['url'])
 
-    if process_stream.is_running():
+    txt_chat.close()
+    txt_stream.close()
+
+    if pid_stream.is_running():
         if unload:
-            os.kill(stream_process.pid, signal.SIGTERM)
+            os.kill(process_stream.pid, signal.SIGTERM)
         else:
-            os.waitpid(stream_process.pid, 0)
+            os.waitpid(process_stream.pid, 0)
             ntfy(f'{url_name} is offline. [{end_time}]', f'{url_title}', stream_json['webpage_url'])
 
         logging.info(f'[offline] ({url_name} - {url_title}) ({end_time})')
 
-    if process_chat.is_running():
-        if process_chat.status() == psutil.STATUS_ZOMBIE:
-            os.waitpid(chat_process.pid, 0)
-        if process_chat.is_running():
-            os.kill(chat_process.pid, signal.SIGTERM)
+    if pid_chat.is_running():
+        if pid_chat.status() == psutil.STATUS_ZOMBIE:
+            os.waitpid(process_chat.pid, 0)
+        if pid_chat.is_running():
+            os.kill(process_chat.pid, signal.SIGTERM)
 
-    threads.remove(input_dict['url'])
-
-    time.sleep(5)
     try:
         jsonconv.json2txt(f"{file_dir}/{file_title}.json")
     except:
@@ -264,6 +268,8 @@ if __name__ == "__main__":
     parser.add_option('-s', '--src', dest='src_name', default='list.txt', help='File with channels/streams')
     parser.add_option('-l', '--log', dest='log_name', default='log.txt', help='Log file')
     parser.add_option('-f', '--ntfy', dest='ntfy_id', help='ntfy.sh channel')
+    parser.add_option('-y', '--yt-dlp', dest='force_ytdlp', action='store_true', help='use yt-dlp instead of streamlink')
+    parser.add_option('-a', '--ytarchive', dest='force_ytarchive', action='store_true', help='use ytarchive for yt streams')
     options, arguments = parser.parse_args()
 
     if options.output != '.':
