@@ -109,9 +109,9 @@ def json2txt(filepath):
         if badge != '':
             username += f' ({badge})'
         if 'Moderator' in badge:
-            icon = '[M]'
+            icon = ' [M] '
         if 'Owner' in badge:
-            icon = '[O]'
+            icon = ' [O] '
 
         if not delay_time:
             delay_time = timestamp
