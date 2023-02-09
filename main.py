@@ -144,11 +144,13 @@ def dump_stream(input_dict):
             "yt-dlp",
             input_dict['url'],
             "--ignore-config",
-            "--hls-use-mpegts",
-            "--no-part",
+            "--live-from-start",
+            "-N", "3",
+            "--merge-output-format", "mp4",
+            "--embed-metadata",
             "--retries", "30",
             "--verbose",
-            "-o", f"{file_dir}/{file_title}.ts"
+            "-o", f"{file_dir}/{file_title}.mp4"
         ]
 
     if options.force_ytarchive and stream_json['extractor'] == "youtube":
@@ -160,7 +162,6 @@ def dump_stream(input_dict):
             "--verbose",
             "--threads", "4",
             "--add-metadata",
-            "--no-merge", # for slow drives
             "-o", f"{file_dir}/{file_title}.mp4",
             "--no-frag-files",
             input_dict['url'],
