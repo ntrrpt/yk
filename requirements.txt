@@ -1,5 +1,0 @@
-chat-downloader
-prettytable
-streamlink
-yt-dlp
-psutil

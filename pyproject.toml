@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "yakayaka"
+version = "1.0.0"
+description = "monitoring and recording livestreams"
+authors = ["ntrrpt"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+chat-downloader = "^0.2.5"
+prettytable = "^3.7.0"
+streamlink = "^5.5.0"
+yt-dlp = "^2023.3.4"
+psutil = "^5.9.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
