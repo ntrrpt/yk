@@ -12,6 +12,7 @@ prettytable = "^3.7.0"
 streamlink = "^5.5.0"
 yt-dlp = "^2023.3.4"
 psutil = "^5.9.5"
+loguru = "^0.7.0"
 
 [build-system]
 requires = ["poetry-core"]

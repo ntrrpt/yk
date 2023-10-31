@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
+from loguru import logger
 import json
+import shlex
 import threading
 import requests
 import time
 import os
+import sys
 import datetime
 import subprocess
 import psutil
 import signal
 import re
 import yt_dlp
-import logging
 import jsonconv
 import optparse
-
+import platform
+import pathlib
 threads = []
 unload = False
 
@@ -114,7 +117,7 @@ def dump_stream(input_dict):
         info.write( json.dumps(stream_json, indent=10, ensure_ascii=False, sort_keys=True) )
 
     # notify
-    logging.info(f'[online] ({url_name} - {url_title})')
+    logger.info(f'[online] ({url_name} - {url_title})')
     ntfy(f'{url_name} is online.', f'{url_title}', stream_json['webpage_url'])
 
     _comm_stream = [
@@ -138,32 +141,31 @@ def dump_stream(input_dict):
         "--twitch-disable-hosting"
     ]
 
-    if options.force_ytdlp:
-        # install ffmpeg!!!   
+    if options.ytdlp:
+        # install ffmpeg!!!
         _comm_stream = [
-            "yt-dlp",
-            input_dict['url'],
+            "yt-dlp", input_dict['url'],
             "--ignore-config",
             "--live-from-start",
             "-N", "3",
             "--merge-output-format", "mp4",
-            "--embed-metadata",
             "--retries", "30",
             "--verbose",
+            "--vp9"
             "-o", f"{file_dir}/{file_title}.mp4"
         ]
 
-    if options.force_ytarchive and stream_json['extractor'] == "youtube":
+    if options.ytarchive and stream_json['extractor'] == "youtube":
         # install ffmpeg!!!
         _comm_stream = [
             "ytarchive",
-            "--debug", 
-            "--trace", 
+            "--trace",
             "--verbose",
-            "--threads", "4",
-            "--add-metadata",
+            "--threads", "3",
             "-o", f"{file_dir}/{file_title}.mp4",
             "--no-frag-files",
+            "--write-mux-file",
+            "--no-merge",
             input_dict['url'],
             input_dict['quality']
         ]
@@ -200,9 +202,6 @@ def dump_stream(input_dict):
     end_time = datetime.timedelta(seconds=int(f'{time.time() - start_time:.{0}f}'))
     threads.remove(input_dict['url'])
 
-    txt_chat.close()
-    txt_stream.close()
-
     if pid_stream.is_running():
         if unload:
             os.kill(process_stream.pid, signal.SIGTERM)
@@ -210,7 +209,37 @@ def dump_stream(input_dict):
             os.waitpid(process_stream.pid, 0)
             ntfy(f'{url_name} is offline. [{end_time}]', f'{url_title}', stream_json['webpage_url'])
 
-        logging.info(f'[offline] ({url_name} - {url_title}) ({end_time})')
+        logger.info(f'[offline] ({url_name} - {url_title}) ({end_time})')
+
+    # manual merging
+    if options.ytarchive:
+        _comm_merge = 'test'
+        files_to_delete = []
+
+        for file in os.listdir(file_dir):
+            if file.endswith('ffmpeg.txt'): 
+                _comm_merge = shlex.split(open(f"{file_dir}/{file}").read())
+                files_to_delete.append(file)
+
+            if file.endswith('.ts'):
+                files_to_delete.append(file)
+
+        # merge video and audio
+        with subprocess.Popen(_comm_merge, stderr=txt_stream) as proc:
+            while True:
+                if proc.poll() == None:
+                    time.sleep(1)
+                    
+                # delete *.ts
+                elif proc.poll() == 0:
+                    for file in files_to_delete:
+                        rem_file = pathlib.Path(f"{file_dir}/{file}")
+                        rem_file.unlink(missing_ok=True)
+                    break
+                    
+                else:
+                    logger.error(f"merge error: {file_dir}")
+                    break
 
     if pid_chat.is_running():
         if pid_chat.status() == psutil.STATUS_ZOMBIE:
@@ -218,10 +247,14 @@ def dump_stream(input_dict):
         if pid_chat.is_running():
             os.kill(process_chat.pid, signal.SIGTERM)
 
+    txt_chat.close()
+    txt_stream.close()
+
     try:
         jsonconv.json2txt(f"{file_dir}/{file_title}.json")
     except:
         pass
+
     os.rename(file_dir, f"{options.output}/{file_title.rstrip()}")
 
 def check_live(url):
@@ -268,25 +301,18 @@ if __name__ == "__main__":
     parser.add_option('-d', '--delay', dest='delay_check', type=int, default='10', help='Streams check delay')
     parser.add_option('-s', '--src', dest='src_name', default='list.txt', help='File with channels/streams')
     parser.add_option('-l', '--log', dest='log_name', default='log.txt', help='Log file')
-    parser.add_option('-f', '--ntfy', dest='ntfy_id', help='ntfy.sh channel')
-    parser.add_option('-y', '--yt-dlp', dest='force_ytdlp', action='store_true', help='use yt-dlp instead of streamlink')
-    parser.add_option('-a', '--ytarchive', dest='force_ytarchive', action='store_true', help='use ytarchive for yt streams')
+    parser.add_option('--ntfy', dest='ntfy_id', help='ntfy.sh channel')
+    parser.add_option('--dlp', dest='ytdlp', action='store_true', help='use yt-dlp instead of streamlink')
+    parser.add_option('--yta', dest='ytarchive', action='store_true', help='use ytarchive for yt streams')
     options, arguments = parser.parse_args()
 
     if options.output != '.':
         os.makedirs(options.output, exist_ok=True)
 
-    logging.basicConfig(
-        format='%(asctime)s | %(message)s',
-        datefmt='%y.%m.%d %H:%M:%S',
-        level=logging.INFO,
-        handlers=[
-            logging.FileHandler(options.log_name),
-            logging.StreamHandler()
-        ]
-    )
-
-    logging.info('Starting...')
+    logger.remove(0)
+    logger.add(sys.stderr, backtrace = True, diagnose = True, format = "<level>[{time:DD-MMM-YYYY HH:mm:ss}]</level> {message}", colorize = True, level = 5)
+    logger.add(options.log_name, backtrace = True, diagnose = True, format = "[{time:DD-MMM-YYYY HH:mm:ss}] {message}", colorize = True, level = 5)
+    logger.info('Starting...')
     try:
         while True:
             urls = dump_list(options.src_name)
@@ -301,6 +327,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         if threads:
             unload = False
-            logging.info('Stopping...')
+            logger.info('Stopping...')
             while threading.active_count() > 1:
                 time.sleep(0.1)
