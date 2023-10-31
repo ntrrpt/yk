@@ -1,0 +1,5 @@
+loguru
+prettytable
+psutil
+requests
+yt_dlp
