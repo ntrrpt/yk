@@ -17,6 +17,8 @@ import jsonconv
 import optparse
 import platform
 import pathlib
+import static_ffmpeg
+import platform
 threads = []
 unload = False
 
@@ -117,8 +119,8 @@ def dump_stream(input_dict):
         info.write( json.dumps(stream_json, indent=10, ensure_ascii=False, sort_keys=True) )
 
     # notify
-    logger.info(f'[online] ({url_name} - {url_title})')
     ntfy(f'{url_name} is online.', f'{url_title}', stream_json['webpage_url'])
+    logger.success(f'[online] ({url_name} - {url_title})')
 
     _comm_stream = [
         "streamlink",
@@ -152,7 +154,7 @@ def dump_stream(input_dict):
             "--retries", "30",
             "--verbose",
             "--vp9"
-            "-o", f"{file_dir}/{file_title}.mp4"
+            "-o", f"{file_dir}/{file_title}"
         ]
 
     if options.ytarchive and stream_json['extractor'] == "youtube":
@@ -162,10 +164,10 @@ def dump_stream(input_dict):
             "--trace",
             "--verbose",
             "--threads", "3",
-            "-o", f"{file_dir}/{file_title}.mp4",
             "--no-frag-files",
             "--write-mux-file",
             "--no-merge",
+            "--output", f"{file_dir}/{file_title}",
             input_dict['url'],
             input_dict['quality']
         ]
@@ -217,7 +219,7 @@ def dump_stream(input_dict):
         files_to_delete = []
 
         for file in os.listdir(file_dir):
-            if file.endswith('ffmpeg.txt'): 
+            if file.endswith('ffmpeg.txt'):
                 _comm_merge = shlex.split(open(f"{file_dir}/{file}").read())
                 files_to_delete.append(file)
 
@@ -229,14 +231,14 @@ def dump_stream(input_dict):
             while True:
                 if proc.poll() == None:
                     time.sleep(1)
-                    
+
                 # delete *.ts
                 elif proc.poll() == 0:
                     for file in files_to_delete:
                         rem_file = pathlib.Path(f"{file_dir}/{file}")
                         rem_file.unlink(missing_ok=True)
                     break
-                    
+
                 else:
                     logger.error(f"merge error: {file_dir}")
                     break
@@ -272,26 +274,29 @@ def dump_list(input):
     with open(input) as file:
         for line in file:
             line = line.rstrip()
-            if len(line) > 0 and line[0] != '#':
-                split = line.split()
-                url = split[0]
-                quality = "best"
-                regex = ""
+            if len(line) < 1 or line[0] == '#':
+                continue
 
-                if len(split) > 1:
-                    quality = split[1]
+            split = line.split()
 
-                if len(split) > 2:
-                    regex = split[2]
+            url = split[0]
+            quality = "best"
+            regex = ""
 
-                if url.find('youtube') != -1 and url.find('watch?v=') == -1:
-                    url += '/live'
+            if len(split) > 1:
+                quality = split[1]
 
-                _list[len(_list)] = {
-                    'url': url,
-                    'regex': regex,
-                    'quality': quality
-                }
+            if len(split) > 2:
+                regex = split[2]
+
+            if url.find('youtube') != -1 and url.find('watch?v=') == -1:
+                url += '/live'
+
+            _list[len(_list)] = {
+                'url': url,
+                'regex': regex,
+                'quality': quality
+            }
 
     return _list
 
@@ -312,7 +317,17 @@ if __name__ == "__main__":
     logger.remove(0)
     logger.add(sys.stderr, backtrace = True, diagnose = True, format = "<level>[{time:DD-MMM-YYYY HH:mm:ss}]</level> {message}", colorize = True, level = 5)
     logger.add(options.log_name, backtrace = True, diagnose = True, format = "[{time:DD-MMM-YYYY HH:mm:ss}] {message}", colorize = True, level = 5)
-    logger.info('Starting...')
+
+    # download ffmpeg binaries for x86 machines
+    if platform.machine() == 'x86_64':
+        static_ffmpeg.add_paths()
+
+    # for ytarchive binary in project folder
+    os.environ["PATH"] = os.pathsep.join([
+        os.path.dirname(os.path.realpath(__file__)),
+        os.environ["PATH"]
+    ])
+
     try:
         while True:
             urls = dump_list(options.src_name)
@@ -326,7 +341,7 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         if threads:
-            unload = False
+            unload = True
             logger.info('Stopping...')
             while threading.active_count() > 1:
                 time.sleep(0.1)
