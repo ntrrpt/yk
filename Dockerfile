@@ -23,8 +23,9 @@ COPY *.sh .
 # RUN poetry config virtualenvs.create false
 RUN poetry update --no-interaction --no-ansi
 
-# install ytarchive binary
+# install binaries
 RUN bash -c './get_ytarchive.sh'
+RUN bash -c './get_ffmpeg.sh'
 
 COPY . /yk
 

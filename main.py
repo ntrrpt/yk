@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from contextlib import suppress
 from loguru import logger
 import json
 import shlex
@@ -9,6 +10,7 @@ import os
 import sys
 import datetime
 import subprocess
+import shutil
 import psutil
 import signal
 import re
@@ -24,18 +26,15 @@ unload = False
 
 def ntfy(title, text, url = ''):
     # https://ntfy.sh/docs
-    try:
+    with suppress(Exception):
         requests.post(
-            "https://ntfy.sh/" + options.ntfy_id,
-            data = text.encode('utf-8'),
-            headers = {
-                "title": title,
-                "click": url
-            }
+            "https://ntfy.sh/" + options.ntfy_id, timeout=10,
+                data = text.encode(encoding='utf-8'),
+                headers = {
+                    "title": title.encode(encoding='utf-8'),
+                    "click": url.encode(encoding='utf-8')
+                }
         )
-    except Exception as ex:
-        if 'Temporary failure in name resolution' not in str(ex):
-            time.sleep(5)
 
 def date_time(format):
     return datetime.datetime.now().strftime(format)
@@ -318,15 +317,17 @@ if __name__ == "__main__":
     logger.add(sys.stderr, backtrace = True, diagnose = True, format = "<level>[{time:DD-MMM-YYYY HH:mm:ss}]</level> {message}", colorize = True, level = 5)
     logger.add(options.log_name, backtrace = True, diagnose = True, format = "[{time:DD-MMM-YYYY HH:mm:ss}] {message}", colorize = True, level = 5)
 
-    # download ffmpeg binaries for x86 machines
-    if platform.machine() == 'x86_64':
-        static_ffmpeg.add_paths()
-
-    # for ytarchive binary in project folder
+    # for binaries in project folder
+    pwdir = os.path.dirname(os.path.realpath(__file__))
     os.environ["PATH"] = os.pathsep.join([
-        os.path.dirname(os.path.realpath(__file__)),
+        pwdir,
         os.environ["PATH"]
     ])
+
+    # download ffmpeg binary for x86 machines
+    if 'ffmpeg' not in os.listdir(pwdir) and ( platform.machine() == 'x86_64' and not shutil.which("ffmpeg") ):
+        static_ffmpeg.add_paths()
+        logger.info('static ffmpeg ok')
 
     try:
         while True:
@@ -337,6 +338,7 @@ if __name__ == "__main__":
                     threading.Thread(target=dump_stream, args=(urls[i], )).start()
                 else:
                     print(f'({i + 1} / {len(urls)}) {len(threads)} is streaming.', end='\r')
+
                 time.sleep(options.delay_check)
 
     except KeyboardInterrupt:
