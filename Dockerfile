@@ -26,6 +26,7 @@ RUN poetry update --no-interaction --no-ansi
 # install binaries
 RUN bash -c './get_ytarchive.sh'
 RUN bash -c './get_ffmpeg.sh'
+RUN chmod +x ffmpeg
 
 COPY . /yk
 
