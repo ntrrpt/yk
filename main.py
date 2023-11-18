@@ -152,7 +152,6 @@ def dump_stream(input_dict):
             "--merge-output-format", "mp4",
             "--retries", "30",
             "--verbose",
-            "--vp9",
             "-o", f"{file_dir}/{file_title}"
         ]
 
