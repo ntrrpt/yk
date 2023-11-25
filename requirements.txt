@@ -4,3 +4,4 @@ psutil
 requests
 yt_dlp
 static-ffmpeg
+chat-downloader
