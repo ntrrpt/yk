@@ -57,8 +57,8 @@ def json2txt(filepath, progress=False):
 
                 dict_append(
                     msg['timestamp'], 
-                    str_cut(msg['author']['display_name'], 20), 
-                    msg['author']['name'], 
+                    str_cut(msg['author']['display_name'], 20) if 'display_name' in msg['author'] else '=(',
+                    msg['author']['name'] if 'name' in msg['author'] else '=(',
                     msg['message'], 
                     badges
                 )
@@ -70,8 +70,8 @@ def json2txt(filepath, progress=False):
 
                 dict_append(
                     msg['timestamp'], 
-                    str_cut(msg['author']['name'], 20), 
-                    msg['author']['id'], 
+                    str_cut(msg['author']['name'], 20) if 'name' in msg['author'] else '=(',
+                    msg['author']['id'] if 'id' in msg['author'] else '=(',
                     msg['message'], 
                     badges
                 )
