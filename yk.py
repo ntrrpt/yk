@@ -15,11 +15,10 @@ import psutil
 import signal
 import re
 import yt_dlp
-import jsonconv
+import jc
 import optparse
 import platform
 import pathlib
-import static_ffmpeg
 import platform
 import codecs
 threads = []
@@ -31,8 +30,13 @@ ytdlp_config = {
     'noplaylist': True
 }
 
+def date_time(format):
+    return datetime.datetime.now().strftime(format)
+
 def ntfy(title, text, url = ''):
-    # https://ntfy.sh/docs
+    if not options.ntfy_id: # https://ntfy.sh/docs
+        return
+
     with suppress(Exception):
         requests.post(
             "https://ntfy.sh/" + options.ntfy_id, timeout=10,
@@ -54,28 +58,18 @@ def str_fix(string):
 
 def dump_stream(input_dict):
     def dump_stream_json(url):
-        try:
-            with yt_dlp.YoutubeDL(ytdlp_config) as ydlp:
-                return ydlp.extract_info(url, download=False)
-
-        except Exception as ex:
-            if 'Temporary failure in name resolution' in str(ex):
-                time.sleep(5)
+        with yt_dlp.YoutubeDL(ytdlp_config) as ydlp:
+            return ydlp.extract_info(url, download=False)
 
     def dump_thumb(dir, video_id):
         hq_blank = "https://i.ytimg.com/vi/%s/hqdefault.jpg"
         max_blank = "https://i.ytimg.com/vi/%s/maxresdefault.jpg"
 
-        try:
-            for blank in [hq_blank, max_blank]:
-                with requests.get(blank % video_id, stream=True) as request:
-                    if request:
-                        with open(dir, 'wb') as file:
-                            file.write(request.content)
-            return
-        except Exception as ex:
-            if 'Temporary failure in name resolution' in str(ex):
-                time.sleep(5)
+        for blank in [hq_blank, max_blank]:
+            with requests.get(blank % video_id, stream=True) as request:
+                if request:
+                    with open(dir, 'wb') as file:
+                        file.write(request.content)
 
     start_time = time.time()
     stream_json = dump_stream_json(input_dict['url'])
@@ -136,9 +130,8 @@ def dump_stream(input_dict):
         "--output", f"{file_dir}/{file_title}.ts",
         "--url", input_dict['url'],
         "--fs-safe-rules", "Windows",
-        "--twitch-disable-ads",
+        "--twitch-disable-ads", "--hls-live-restart",
         "--http-timeout", "180",
-        "--hls-live-restart",
         "--stream-segment-threads", "2",
         "--stream-segment-timeout", "180",
         "--stream-segment-attempts", "300",
@@ -153,28 +146,20 @@ def dump_stream(input_dict):
     ]
 
     if options.ytdlp:
-        # install ffmpeg!!!
         _comm_stream = [
             "yt-dlp", input_dict['url'],
-            "--ignore-config",
-            "--live-from-start",
-            "-N", "3",
+            "--verbose", "--ignore-config", "--live-from-start",
             "--merge-output-format", "mp4",
             "--retries", "30",
-            "--verbose",
+            "-N", "3",
             "-o", f"{file_dir}/{file_title}"
         ]
 
     if options.ytarchive and stream_json['extractor'] == "youtube":
-        # install ffmpeg!!!
         _comm_stream = [
             "ytarchive",
-            "--trace",
-            "--verbose",
             "--threads", "3",
-            "--no-frag-files",
-            "--write-mux-file",
-            "--no-merge",
+            "--trace", "--verbose", "--no-frag-files", "--write-mux-file", "--no-merge",
             "--output", f"{file_dir}/{file_title}",
             input_dict['url'],
             input_dict['quality']
@@ -260,10 +245,8 @@ def dump_stream(input_dict):
     txt_chat.close()
     txt_stream.close()
 
-    try:
-        jsonconv.json2txt(f"{file_dir}/{file_title}.json")
-    except:
-        pass
+    with suppress(Exception):
+        jc.json2txt(f"{file_dir}/{file_title}.json")
 
     os.rename(file_dir, f"{options.output}/{file_title.rstrip()}")
 
@@ -310,21 +293,21 @@ def dump_list(input):
 
 if __name__ == "__main__":
     parser = optparse.OptionParser()
-    parser.add_option('-o', '--output', dest='output', default='.', help='Streams dest')
+    parser.add_option('-o', '--output', dest='output', default='.', help='Streams output')
     parser.add_option('-d', '--delay', dest='delay_check', type=int, default='10', help='Streams check delay')
     parser.add_option('-s', '--src', dest='src_name', default='list.txt', help='File with channels/streams')
-    parser.add_option('-l', '--log', dest='log_name', default='log.txt', help='Log file')
     parser.add_option('--ntfy', dest='ntfy_id', help='ntfy.sh channel')
-    parser.add_option('--dlp', dest='ytdlp', action='store_true', help='use yt-dlp instead of streamlink')
-    parser.add_option('--yta', dest='ytarchive', action='store_true', help='use ytarchive for yt streams')
+    parser.add_option('--dlp', dest='ytdlp', action='store_true', help='Use yt-dlp instead of streamlink')
+    parser.add_option('--yta', dest='ytarchive', action='store_true', help='Use ytarchive for youtube streams')
     options, arguments = parser.parse_args()
 
     if options.output != '.':
         os.makedirs(options.output, exist_ok=True)
 
+    log_name = ("%s/%s.txt" % (options.output, date_time('%Y-%m-%d')))
     logger.remove(0)
-    logger.add(sys.stderr, backtrace = True, diagnose = True, format = "<level>[{time:DD-MMM-YYYY HH:mm:ss}]</level> {message}", colorize = True, level = 5)
-    logger.add(options.log_name, backtrace = True, diagnose = True, format = "[{time:DD-MMM-YYYY HH:mm:ss}] {message}", colorize = True, level = 5)
+    logger.add(sys.stderr, format = "<level>[{time:DD-MMM-YYYY HH:mm:ss}]</level> {message}", backtrace = True, diagnose = True,  colorize = True, level = 5)
+    logger.add(log_name, format = "[{time:DD-MMM-YYYY HH:mm:ss}] {message}", backtrace = True, diagnose = True,  colorize = True, level = 5)
 
     # for binaries in project folder
     pwdir = os.path.dirname(os.path.realpath(__file__))
@@ -332,11 +315,6 @@ if __name__ == "__main__":
         pwdir,
         os.environ["PATH"]
     ])
-
-    # download ffmpeg binary for x86 machines
-    if 'ffmpeg' not in os.listdir(pwdir) and ( platform.machine() == 'x86_64' and not shutil.which("ffmpeg") ):
-        static_ffmpeg.add_paths()
-        logger.info('static ffmpeg ok')
 
     try:
         while True:
