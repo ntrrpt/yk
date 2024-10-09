@@ -21,8 +21,15 @@ import platform
 import pathlib
 import static_ffmpeg
 import platform
+import codecs
 threads = []
 unload = False
+
+ytdlp_config = {
+    'quiet': True,
+    'playlist_items': 0,
+    'noplaylist': True
+}
 
 def ntfy(title, text, url = ''):
     # https://ntfy.sh/docs
@@ -47,12 +54,6 @@ def str_fix(string):
 
 def dump_stream(input_dict):
     def dump_stream_json(url):
-        ytdlp_config = {
-            'quiet': True,
-            'playlist_items': 0,
-            'noplaylist': True
-        }
-
         try:
             with yt_dlp.YoutubeDL(ytdlp_config) as ydlp:
                 return ydlp.extract_info(url, download=False)
@@ -79,21 +80,22 @@ def dump_stream(input_dict):
     start_time = time.time()
     stream_json = dump_stream_json(input_dict['url'])
 
-    if stream_json['extractor'] == "youtube":
-        url_title = str_fix(stream_json['title'][:-17])
-        url_name = str_fix(stream_json['uploader'])
+    match stream_json['extractor']:
+        case "youtube":
+            url_title = str_fix(stream_json['title'][:-17])
+            url_name = str_fix(stream_json['uploader'])
 
-    elif stream_json['extractor'] == "twitch:stream":
-        url_title = str_fix(stream_json['description'])
-        url_name = str_fix(stream_json['uploader'])
+        case "twitch:stream":
+            url_title = str_fix(stream_json['description'])
+            url_name = str_fix(stream_json['uploader'])
 
-    elif stream_json['extractor'] == "wasdtv:stream":
-        url_title = str_fix(stream_json['fulltitle'])
-        url_name = str_fix(stream_json['webpage_url_basename'])
+        case "wasdtv:stream":
+            url_title = str_fix(stream_json['fulltitle'])
+            url_name = str_fix(stream_json['webpage_url_basename'])
 
-    else:
-        url_title = str_fix(stream_json['title'])
-        url_name = str_fix(stream_json['uploader'])
+        case _:
+            url_title = str_fix(stream_json['title'])
+            url_name = str_fix(stream_json['uploader'])
 
     if input_dict['regex']:
         regex = input_dict['regex'].lower()
@@ -114,8 +116,16 @@ def dump_stream(input_dict):
         dump_thumb(f"{file_dir}/{file_title}.jpg", stream_json['id'])
 
     # saving stream info
-    with open(f"{file_dir}/{file_title}.info", 'w') as info:
-        info.write( json.dumps(stream_json, indent=10, ensure_ascii=False, sort_keys=True) )
+    with codecs.open(f"{file_dir}/{file_title}.info", 'w', "utf-8") as info:
+        info.write( 
+            json.dumps
+            (
+                stream_json, 
+                indent=10, 
+                ensure_ascii=False, 
+                sort_keys=True
+            )
+        )
 
     # notify
     ntfy(f'{url_name} is online.', f'{url_title}', stream_json['webpage_url'])
