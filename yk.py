@@ -246,7 +246,7 @@ def dump_stream(input_dict):
     txt_stream.close()
 
     with suppress(Exception):
-        jc.json2txt(f"{file_dir}/{file_title}.json")
+        jc.conv(f"{file_dir}/{file_title}.json")
 
     os.rename(file_dir, f"{options.output}/{file_title.rstrip()}")
 

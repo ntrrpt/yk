@@ -1,14 +1,29 @@
 #!/usr/bin/env python3
-import json, os, datetime, sys
+import json, os, datetime, sys, pathlib
 from prettytable import PrettyTable
+
+fields = ["Badges", "Username", "Link to channel (id)" ]
+progress = False
+
+def fileDel(filename):
+    rem_file = pathlib.Path(filename)
+    rem_file.unlink(missing_ok=True)
+
+def add(dir, bin):
+    with open(dir, 'a', encoding='utf-8') as file:
+        file.write(bin + '\n')
 
 def str_cut(string, letters, postfix='...'):
     return string[:letters] + (string[letters:] and postfix)
 
-def json2txt(filepath, progress=False):
+def log(string, end='\n'):
+    if progress:
+        print(string, end=end)
+
+def conv(filepath):
     def dict_append(timestamp, username, id, message, badge):
         history[len(history)] = {
-            'timestamp': timestamp // int(1e6), 
+            'timestamp': timestamp, 
             'username': username, 
             'message': message, 
             'badge': badge
@@ -24,99 +39,104 @@ def json2txt(filepath, progress=False):
             'badge': badge
         }
 
-    site = ''
+    SITE = ''
+    LINK = ''
+    chat = ''
     users = {}
     history = {}
-    filename = os.path.splitext(filepath)[0] + '.conv'
-
     users_table = PrettyTable()
-    users_table.field_names = [
-        "Badges", 
-        "Username",
-        "Link to channel (id)"
-    ]
+    users_table.field_names = fields
+    filename = os.path.splitext(filepath)[0] + '.conv'
 
     with open(filepath, 'r', encoding='utf-8') as file:
         chat = json.load(file)
-        for i, msg in enumerate(chat, start=1):
-            if not 'message' in msg:
-                continue
 
-            if progress:
-                print(f'[sorting] m: {i}/{len(chat)}, u: {len(users)}', end='\r')
+    # type of stream (youtube / twitch)
+    types = []
+    for i, msg in enumerate(chat, start=1):
+        log('[finding] messages: %s/%s' % (len(chat), i), end='\r')
+        types.append(msg['action_type'])
+    log('') # newline
 
-            badges = ''
-            if 'badges' in msg['author']:
-                for b, badge in enumerate(msg['author']['badges']):
-                    badges += (', ' if b > 0 else '') + badge['title']
+    types = list(set(types))
 
-            # twitch
-            if 'actionsite' not in msg or msg['actionsite'] == 'text_message':
-                if not site: 
-                    site = 'tw' 
+    if len(types) > 1:
+        log('%s: new types: %s' % (filename, types))
+    if 'text_message' in types:
+        SITE = 'twitch'
+        LINK = 'https://www.twitch.tv/'
+    if 'add_chat_item' in types:
+        SITE = 'youtube'
+        LINK = 'https://www.youtube.com/channel/'
+    if not SITE:
+        log('%s: yt/tw not found in json' % filename)
+        return
 
+    # adding messages to dict
+    for i, msg in enumerate(chat, start=1):
+        if not 'message' in msg:
+            log('%s: no message       ' % i)
+            continue
+
+        log('[sorting] messages: %s/%s, users: %s' % (len(chat), i, len(users)), end='\r')
+
+        # badges (moderator, subscriber, etc.)
+        badges = ''
+        if 'badges' in msg['author']:
+            for b, badge in enumerate(msg['author']['badges']):
+                badges += (', ' if b > 0 else '') + badge['title']
+
+        match SITE:
+            case "youtube":
                 dict_append(
                     msg['timestamp'], 
-                    str_cut(msg['author']['display_name'], 20) if 'display_name' in msg['author'] else '=(',
-                    msg['author']['name'] if 'name' in msg['author'] else '=(',
+                    str_cut(msg['author']['name'], 20),
+                    msg['author']['id'],
                     msg['message'], 
                     badges
                 )
 
-            # youtube 
-            elif msg['actionsite'] == 'add_chat_item':
-                if not site: 
-                    site = 'yt' 
-
+            case "twitch":
                 dict_append(
                     msg['timestamp'], 
-                    str_cut(msg['author']['name'], 20) if 'name' in msg['author'] else '=(',
-                    msg['author']['id'] if 'id' in msg['author'] else '=(',
+                    str_cut(msg['author']['display_name'], 20),
+                    msg['author']['name'],
                     msg['message'], 
                     badges
                 )
+    log('')
 
+    # adding users to prettytable
     for i in range(len(users)):
-        if progress:
-            print(f'[sorting] m: {len(chat)}/{len(chat)}, u: {i+1}/{len(users)}', end='\r')
-
-        yt_link = 'https://www.youtube.com/channel/' 
-        tw_link = 'https://www.twitch.tv/'
-
         users_table.add_row([
             users[i]['badge'], 
             users[i]["username"], 
-            (tw_link if site == 'tw' else yt_link) + users[i]["id"]
+            LINK + users[i]["id"]
         ])
 
-    if progress:
-        print(f'[writing] m: {" " * len(str(len(chat)))}', end='\r')
+    # writing msg count and table
+    fileDel(filename)
+    add(filename, 'messages: %s, users: %s' % (len(chat), len(users)))
+    add(filename, users_table.get_string(sortby="Badges", reversesort=True))
 
-    if os.path.exists(filename): 
-        os.remove(filename)
-
-    with open(filename, 'a') as file:
-        file.write(f'messages: {len(chat)}, users: {len(users)}\n')
-        file.write(f'{users_table.get_string(sortby="Badges", reversesort=True)}\n')
-
+    # writing messages
     delay_time = 0
     all_time = 0
 
     for i in range(len(history)):
-        if progress:
-            print(f'[writing] m: {i+1}', end='\r')
+        log('[writing] messages: %s/%s' % (len(chat), i+1),  end='\r')
 
         username = history[i]["username"]
         badge = history[i]['badge']
         timestamp = history[i]['timestamp']
 
         icon = '  |  '
-        if badge != '':
+        if badge:
             username += f' ({badge})'
-        if 'Moderator' in badge:
-            icon = ' [M] '
-        if 'Owner' in badge:
-            icon = ' [O] '
+            if 'Moderator' in badge:
+                icon = ' [M] '
+            if 'Owner' in badge:
+                icon = ' [O] '
 
         if not delay_time:
             delay_time = timestamp
@@ -124,15 +144,13 @@ def json2txt(filepath, progress=False):
         delta = timestamp - delay_time
         all_time += delta
         delay_time = timestamp
-        timestr = datetime.timedelta(seconds=int(all_time))
-        #timestr = datetime.datetime.fromtimestamp(history[i]['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
-        with open(filename, 'a') as file:
-            file.write(f'{timestr}{icon}{username}: {history[i]["message"]}\n')
+        timestr = str(datetime.timedelta(microseconds=int(all_time))) # datetime.datetime.fromtimestamp(history[i]['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+        add(filename, f'{timestr[:-4]}{icon}{username}: {history[i]["message"]}')
 
-    if progress:      
-        print('')
+    log('')
 
 if __name__ == "__main__":
+    progress = True
     for i in range(1, len(sys.argv)):
-        json2txt(sys.argv[i], True)
+        conv(sys.argv[i])
