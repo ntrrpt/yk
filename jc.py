@@ -51,6 +51,8 @@ def conv(filepath):
     with open(filepath, 'r', encoding='utf-8') as file:
         chat = json.load(file)
 
+    fileDel(filename)
+
     # type of stream (youtube / twitch)
     types = []
     for i, msg in enumerate(chat, start=1):
@@ -61,7 +63,9 @@ def conv(filepath):
     types = list(set(types))
 
     if len(types) > 1:
-        log('%s: new types: %s' % (filename, types))
+        m = '%s: new types: %s' % (filename, types)
+        add(filename, m)
+        log(m)
     if 'text_message' in types:
         SITE = 'twitch'
         LINK = 'https://www.twitch.tv/'
@@ -69,7 +73,9 @@ def conv(filepath):
         SITE = 'youtube'
         LINK = 'https://www.youtube.com/channel/'
     if not SITE:
-        log('%s: yt/tw not found in json' % filename)
+        m = '%s: yt/tw not found in json' % filename
+        add(filename, m)
+        log(m)
         return
 
     # adding messages to dict
@@ -115,7 +121,6 @@ def conv(filepath):
         ])
 
     # writing msg count and table
-    fileDel(filename)
     add(filename, 'messages: %s, users: %s' % (len(chat), len(users)))
     add(filename, users_table.get_string(sortby="Badges", reversesort=True))
 
