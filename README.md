@@ -1,6 +1,6 @@
 ## Poetry usage
 ```
-curl -sSL https://install.python-poetry.org | python3 -
+pipx install poetry
 git clone https://github.com/ntrrpt/yakayaka.git && cd yakayaka
 poetry update
 poetry run python main.py --yta
@@ -8,17 +8,20 @@ poetry run python main.py --yta
 
 ## Docker usage
 ```
-# log file must exist before the docker starts
-touch log.txt
-
-docker build https://github.com/ntrrpt/yakayaka.git -t yakayaka
-
-docker run --rm -d \
-  -v "$(pwd)"/log.txt:/yk/log.txt \
-  -v "$(pwd)"/list.txt:/yk/list.txt \
-  -v $PWD:/tmp \
-  yakayaka
-  --ntfy=<ntfy_id> \
-  --delay=20 \
-  --yta
+docker build https://github.com/ntrrpt/yakayaka.git -t yk
+```
+```
+docker run --rm -it \
+  -v $PWD:/out \
+  -v tw_list.txt:/app/list.txt \
+  yk --delay=15 --ntfy=test_channel
+```
+```
+docker run -d --restart unless-stopped \
+  --net=host \
+  --env HTTP_PROXY="http://127.0.0.1:10809" \
+  --env HTTPS_PROXY="http://127.0.0.1:10809" \
+  -v $PWD:/out \
+  -v yt_list.txt:/app/list.txt \
+  yk --yta --delay=30
 ```
