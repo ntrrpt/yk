@@ -280,22 +280,22 @@ def check_live(url):
         while True:
             time.sleep(0.1)
             p = proc.poll()
-            if p:
+            if p is not None:
                 return (True if p == 0 else False)
 
 def dump_list(input):
-    _list = {}
+    lst = {}
     with open(input) as file:
         for line in file:
             line = line.rstrip()
-            if len(line) < 1 or line[0] == '#':
+            if not line or line.startswith('#'):
                 continue
 
             split = line.split()
 
             url = split[0]
-            quality = "best"
             regex = ""
+            quality = "best"
 
             if len(split) > 1:
                 quality = split[1]
@@ -303,20 +303,21 @@ def dump_list(input):
             if len(split) > 2:
                 regex = split[2]
 
-            if url.find('youtube') != -1 and url.find('watch?v=') == -1:
+            if 'youtube' in url and 'watch?v=' not in url:
                 url += '/live'
 
-            _list[len(_list)] = {
+            lst[len(lst)] = {
                 'url': url,
                 'regex': regex,
                 'quality': quality
             }
 
-    return _list
+    return lst
 
 if __name__ == "__main__":
     parser = optparse.OptionParser()
     parser.add_option('-o', '--output', dest='output', default='.', help='Streams output')
+    parser.add_option('-l', '--log', dest='log_name', default='', help='Log output')
     parser.add_option('-d', '--delay', dest='delay_check', type=int, default='10', help='Streams check delay')
     parser.add_option('-s', '--src', dest='src_name', default='list.txt', help='File with channels/streams')
     parser.add_option('--ntfy', dest='ntfy_id', help='ntfy.sh channel')
@@ -327,10 +328,12 @@ if __name__ == "__main__":
     if options.output != '.':
         os.makedirs(options.output, exist_ok=True)
 
-    log_name = ("%s/%s.txt" % (options.output, date_time('%Y-%m-%d')))
+    if not options.log_name:
+        options.log_name = "%s/%s.txt" % (options.output, date_time('%Y-%m-%d'))
+
     logger.remove(0)
     logger.add(sys.stderr, format = "<level>[{time:DD-MMM-YYYY HH:mm:ss}]</level> {message}", backtrace = True, diagnose = True,  colorize = True, level = 5)
-    logger.add(log_name, format = "[{time:DD-MMM-YYYY HH:mm:ss}] {message}", backtrace = True, diagnose = True,  colorize = True, level = 5)
+    logger.add(options.log_name, format = "[{time:DD-MMM-YYYY HH:mm:ss}] {message}", backtrace = True, diagnose = True,  colorize = True, level = 5)
 
     # for binaries in project folder
     pwdir = os.path.dirname(os.path.realpath(__file__))
