@@ -90,7 +90,7 @@ def str_cut(string, letters, postfix='...'):
     return string[:letters] + (string[letters:] and postfix)
 
 def str_fix(string):
-    return str_cut(re.sub(r'[/\\?%*:{}|"<>]', '', string), 100, '')
+    return str_cut(re.sub(r'[/\\?%*:{}【】|"<>]', '', string), 100, '')
 
 def dump_stream(input_dict):
     def dump_stream_json(url):
