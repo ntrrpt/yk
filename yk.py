@@ -69,6 +69,10 @@ _comm_ytarchive = [
 def date_time(format):
     return datetime.datetime.now().strftime(format)
 
+def fileDel(filename):
+    rem_file = pathlib.Path(filename)
+    rem_file.unlink(missing_ok=True)
+
 def ntfy(title, text, url = ''):
     if not options.ntfy_id: # https://ntfy.sh/docs
         return
@@ -138,15 +142,16 @@ def dump_stream(input_dict):
 
     file_title = f'[{date_time("%y-%m-%d %H_%M_%S")}] {url_name} - {url_title}'
     file_dir = f"{options.output}/[live] {file_title.rstrip()}"
+    dirtitle = "%s/%s" % (file_dir, file_title)
 
     os.makedirs(file_dir, exist_ok=True)
 
     # dump preview image
     if 'youtube' in stream_json['extractor']:
-        dump_thumb("%s/%s.jpg" % (file_dir, file_title), stream_json['id'])
+        dump_thumb(dirtitle + ".jpg", stream_json['id'])
 
     # saving stream info
-    with codecs.open("%s/%s.info" % (file_dir, file_title), 'w', "utf-8") as info:
+    with codecs.open(dirtitle + ".info", 'w', "utf-8") as info:
         info.write( 
             json.dumps
             (
@@ -162,24 +167,24 @@ def dump_stream(input_dict):
     logger.success(f'[online] ({url_name} - {url_title})')
 
     # choosing record method
-    comm_stream = _comm_streamlink
+    comm_stream = _comm_streamlink.copy()
     comm_add = [
         "--url", input_dict['url'],
-        "--output", "%s/%s.ts" % (file_dir, file_title),
+        "--output", dirtitle + ".ts",
         "--default-stream", input_dict['quality']
     ]
 
     if options.ytdlp:
-        comm_stream = _comm_ytdlp
+        comm_stream = _comm_ytdlp.copy()
         comm_add = [
-            "-o", "%s/%s" % (file_dir, file_title),
+            "-o", dirtitle,
             input_dict['url']
         ]
 
     if options.ytarchive and 'youtube' in stream_json['extractor']:
-        comm_stream = _comm_ytarchive
+        comm_stream = _comm_ytarchive.copy()
         comm_add = [
-            "--output", "%s/%s" % (file_dir, file_title),
+            "--output", dirtitle,
             input_dict['url'],
             input_dict['quality']
         ]
@@ -190,17 +195,17 @@ def dump_stream(input_dict):
     _comm_chat = [
         'chat_downloader',
         stream_json['webpage_url'],
-        "--output", "%s/%s.json" % (file_dir, file_title),
+        "--output", dirtitle + ".json",
         "--inactivity_timeout", "99999999"
     ]
 
     # ext stream dump process
-    txt_stream = open("%s/%s.log" % (file_dir, file_title), "w")
+    txt_stream = open(dirtitle + ".log", "a")
     process_stream = subprocess.Popen(comm_stream, stdout=txt_stream, stderr=txt_stream)
     pid_stream = psutil.Process(process_stream.pid)
 
     # chat saving
-    txt_chat = open("%s/%s.chat" % (file_dir, file_title), "w")
+    txt_chat = open(dirtitle + ".chat", "w")
     process_chat = subprocess.Popen(_comm_chat, stdout=txt_chat, stderr=txt_chat)
     pid_chat = psutil.Process(process_chat.pid)
 
@@ -234,10 +239,9 @@ def dump_stream(input_dict):
         files_to_delete = []
 
         for file in os.listdir(file_dir):
-            filepath = "%s/%s" % (file_dir, file)
-
             if file.endswith('ffmpeg.txt'):
-                _comm_merge = shlex.split(open(filepath).read())
+                fp = "%s/%s" % (file_dir, file)
+                _comm_merge = shlex.split(open(fp).read())
                 files_to_delete.append(file)
 
             if file.endswith('.ts'):
@@ -246,18 +250,16 @@ def dump_stream(input_dict):
         # merge video and audio
         with subprocess.Popen(_comm_merge, stderr=txt_stream) as proc:
             while True:
-                if proc.poll() == None:
-                    time.sleep(1)
+                time.sleep(1)
+                p = proc.poll()
 
-                # delete *.ts
-                elif proc.poll() == 0:
+                if p == 0:
                     for file in files_to_delete:
-                        filepath = "%s/%s" % (file_dir, file)
-                        rem_file = pathlib.Path(filepath)
-                        rem_file.unlink(missing_ok=True)
+                        fp = "%s/%s" % (file_dir, file)
+                        fileDel(fp)
                     break
 
-                else:
+                if p is not None:
                     logger.error(f"merge error: {file_dir}")
                     break
 
@@ -271,7 +273,7 @@ def dump_stream(input_dict):
     txt_stream.close()
 
     with suppress(Exception):
-        jc.conv("%s/%s.json" % (file_dir, file_title))
+        jc.conv(dirtitle + ".json")
 
     os.rename(file_dir, f"{options.output}/{file_title.rstrip()}")
 
