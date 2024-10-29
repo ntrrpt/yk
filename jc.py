@@ -151,7 +151,7 @@ def conv(filepath):
         delay_time = timestamp
 
         timestr = str(datetime.timedelta(microseconds=int(all_time))) # datetime.datetime.fromtimestamp(history[i]['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-        add(filename, f'{timestr[:-4]}{icon}{username}: {history[i]["message"]}')
+        add(filename, f'{timestr[:-5]}{icon}{username}: {history[i]["message"]}')
 
     log('')
 
