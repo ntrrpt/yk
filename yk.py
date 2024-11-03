@@ -176,18 +176,13 @@ def dump_stream(input_dict):
 
     if options.ytdlp:
         comm_stream = _comm_ytdlp.copy()
-        comm_add = [
-            "-o", dirtitle,
-            input_dict['url']
-        ]
+        comm_add = ["-o", dirtitle, input_dict['url']]
+        if 'twitch' in stream_json['extractor']:
+            comm_add.insert(0, '--no-live-from-start')
 
     if options.ytarchive and 'youtube' in stream_json['extractor']:
         comm_stream = _comm_ytarchive.copy()
-        comm_add = [
-            "--output", dirtitle,
-            input_dict['url'],
-            input_dict['quality']
-        ]
+        comm_add = ["--output", dirtitle, input_dict['url'], input_dict['quality']]
 
     for i in comm_add:
         comm_stream.append(i)
