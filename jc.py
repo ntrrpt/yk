@@ -2,7 +2,7 @@
 import json, os, datetime, sys, pathlib
 from prettytable import PrettyTable
 
-fields = ["Badges", "Username", "Link to channel (id)" ]
+fields = ["Badges", "Username", "Link to channel (id)"]
 progress = False
 
 def fileDel(filename):
@@ -41,6 +41,7 @@ def conv(filepath):
 
     SITE = ''
     LINK = ''
+    
     chat = ''
     users = {}
     history = {}
@@ -137,7 +138,7 @@ def conv(filepath):
 
         icon = '  |  '
         if badge:
-            username += f' ({badge})'
+            #username += f' ({badge})'
             if 'Moderator' in badge:
                 icon = ' [M] '
             if 'Owner' in badge:

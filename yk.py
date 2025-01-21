@@ -278,7 +278,7 @@ def check_live(url):
             time.sleep(0.1)
             p = proc.poll()
             if p is not None:
-                return (True if p == 0 else False)
+                return p == 0
 
 def dump_list(input):
     lst = {}
