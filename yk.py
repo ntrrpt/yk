@@ -112,7 +112,7 @@ def dump_stream(input_dict):
                     with open(dir, 'wb') as file:
                         file.write(request.content)
 
-            if os.path.exists(file):
+            if os.path.exists(dir):
                 return
 
     start_time = time.time()
