@@ -1,7 +1,0 @@
-loguru
-prettytable
-psutil
-requests
-yt_dlp
-chat-downloader
-streamlink
