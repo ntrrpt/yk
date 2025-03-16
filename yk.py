@@ -19,6 +19,7 @@ import jc
 import optparse
 import pathlib
 import codecs
+
 threads = []
 unload = False
 
@@ -98,18 +99,21 @@ def str_fix(string):
 
 def dump_stream(input_dict):
     def dump_stream_json(url):
-        with yt_dlp.YoutubeDL(ytdlp_config) as ydlp:
-            return ydlp.extract_info(url, download=False)
+        with yt_dlp.YoutubeDL(ytdlp_config) as y:
+            return y.extract_info(url, download=False)
 
     def dump_thumb(dir, video_id):
         hq_blank = "https://i.ytimg.com/vi/%s/hqdefault.jpg"
         max_blank = "https://i.ytimg.com/vi/%s/maxresdefault.jpg"
 
-        for blank in [hq_blank, max_blank]:
+        for blank in [max_blank, hq_blank]:
             with requests.get(blank % video_id, stream=True) as request:
                 if request:
                     with open(dir, 'wb') as file:
                         file.write(request.content)
+
+            if os.path.exists(file):
+                return
 
     start_time = time.time()
     stream_json = dump_stream_json(input_dict['url'])
@@ -153,8 +157,7 @@ def dump_stream(input_dict):
     # saving stream info
     with codecs.open(dirtitle + ".info", 'w', "utf-8") as info:
         info.write( 
-            json.dumps
-            (
+            json.dumps(
                 stream_json, 
                 indent=10, 
                 ensure_ascii=False, 
@@ -273,7 +276,8 @@ def dump_stream(input_dict):
     os.rename(file_dir, f"{options.output}/{file_title.rstrip()}")
 
 def check_live(url):
-    with subprocess.Popen(['streamlink', '--twitch-disable-hosting', "--url", url], stdout=subprocess.PIPE) as proc:
+    c = ['streamlink', '--twitch-disable-hosting', "--url", url]
+    with subprocess.Popen(c, stdout=subprocess.PIPE) as proc:
         while True:
             time.sleep(0.1)
             p = proc.poll()
@@ -343,11 +347,15 @@ if __name__ == "__main__":
         while True:
             urls = dump_list(options.src_name)
 
+            if not urls:
+                logger.error("no channels for monitoring")
+                break
+
             for i in range(len(urls)):
+                print(f'({i + 1} / {len(urls)}) {len(threads)} is streaming.', end='\r')
                 if urls[i]['url'] not in threads and check_live(urls[i]['url']):
-                    threading.Thread(target=dump_stream, args=(urls[i], )).start()
-                else:
-                    print(f'({i + 1} / {len(urls)}) {len(threads)} is streaming.', end='\r')
+                    T = threading.Thread(target=dump_stream, args=(urls[i], ))
+                    T.start()
 
                 time.sleep(options.delay_check)
 
