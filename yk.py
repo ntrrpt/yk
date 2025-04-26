@@ -232,7 +232,7 @@ def dump_stream(input_dict):
         logger.info(f'[offline] ({url_name} - {url_title}) ({end_time})')
 
     # manual merging
-    if options.ytarchive:
+    if options.ytarchive and 'youtube' in stream_json['extractor']:
         _comm_merge = 'test'
         files_to_delete = []
 
