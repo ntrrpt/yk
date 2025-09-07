@@ -1,0 +1,8 @@
+**/__pycache__/**
+*.pyc
+**/.git/**
+compose.yml
+.venv
+.ruff_cache
+*.log
+\[*\]*/
