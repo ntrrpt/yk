@@ -1,9 +1,10 @@
 FROM ghcr.io/astral-sh/uv:python3.13-alpine
 
 ENV UV_NO_PROGRESS=1
+ENV UV_COMPILE_BYTECODE=1
 ENV NO_COLOR=1
 
-ARG FORCE_UV_SYNC_ON_BUILD=NAH
+ARG FORCE_UV_SYNC_ON_START=NAH
 ENV YK_OUTPUT=/out
 
 ARG PUID=1000
@@ -24,7 +25,7 @@ USER ${UNAME}
 WORKDIR /app
 COPY . /app
 
-RUN if [ "${FORCE_UV_SYNC_ON_BUILD}" = "YES" ]; then \
+RUN if [ "${FORCE_UV_SYNC_ON_START}" != "YES" ]; then \
         uv sync; \
     fi
 
