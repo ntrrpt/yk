@@ -1,26 +1,37 @@
-## uv usage
+## via uv:
 ```
 curl -LsSf https://astral.sh/uv/install.sh | sh
-git clone https://github.com/ntrrpt/yakayaka.git && cd yakayaka
-uv run yk.py --yta
+git clone https://github.com/ntrrpt/yk.git && cd yk
+uv run yk.py -v -d 15 -s list-tw.txt
 ```
 
-## Docker usage
+## via docker compose:
 ```
-docker build https://github.com/ntrrpt/yakayaka.git -t yk
+docker compose up --build
 ```
+
+## via docker:
+
 ```
-docker run --rm -it \
-  -v $PWD:/out \
-  -v $PWD/list.txt:/app/list.txt \
-  yk --delay=15 --ntfy=test_channel
+docker build -t yk:latest \
+  --build-arg PGID=1000 \
+  --build-arg PUID=1000 \
+  --build-arg FORCE_UV_SYNC_ON_START=YES \
+  https://github.com/ntrrpt/yk.git
 ```
+
 ```
-docker run -d --restart unless-stopped \
-  --net=host \
-  --env HTTP_PROXY="http://127.0.0.1:10809" \
-  --env HTTPS_PROXY="http://127.0.0.1:10809" \
-  -v $PWD:/out \
-  -v $PWD/list.txt:/app/list.txt \
-  yk --yta --delay=30
+docker run -d \
+  --name yk \
+  --restart unless-stopped \
+  --network host \
+  -t -i \
+  -e YK_LOG_PATH=/tmp/log \
+  -e YK_DELAY=15 \
+  -e YK_SRC_LISTS=/tmp/list-tw.txt \
+  -v "$(pwd):/out" \
+  -v "$(pwd)/list-tw.txt:/tmp/list-tw.txt" \
+  -v "$(pwd):/tmp/log" \
+  yk:latest
 ```
+
