@@ -1,27 +1,13 @@
 #!/usr/bin/env python3
 import json
+import util
 import os
 import datetime
 import sys
-import pathlib
 from prettytable import PrettyTable
 
 fields = ['Badges', 'Username', 'Link to channel (id)']
 progress = False
-
-
-def fileDel(filename):
-    rem_file = pathlib.Path(filename)
-    rem_file.unlink(missing_ok=True)
-
-
-def add(dir, bin):
-    with open(dir, 'a', encoding='utf-8') as file:
-        file.write(bin + '\n')
-
-
-def str_cut(string, letters, postfix='...'):
-    return string[:letters] + (string[letters:] and postfix)
 
 
 def log(string, end='\n'):
@@ -57,7 +43,7 @@ def conv(filepath):
     with open(filepath, 'r', encoding='utf-8') as file:
         chat = json.load(file)
 
-    fileDel(filename)
+    util.delete(filename)
 
     # type of stream (youtube / twitch)
     types = []
@@ -70,7 +56,7 @@ def conv(filepath):
 
     if len(types) > 1:
         m = '%s: new types: %s' % (filename, types)
-        add(filename, m)
+        util.append(filename, m)
         log(m)
     if 'text_message' in types:
         SITE = 'twitch'
@@ -80,7 +66,7 @@ def conv(filepath):
         LINK = 'https://www.youtube.com/channel/'
     if not SITE:
         m = '%s: yt/tw not found in json' % filename
-        add(filename, m)
+        util.append(filename, m)
         log(m)
         return
 
@@ -105,7 +91,7 @@ def conv(filepath):
             case 'youtube':
                 dict_append(
                     msg['timestamp'],
-                    str_cut(msg['author']['name'], 20),
+                    util.str_cut(msg['author']['name'], 20),
                     msg['author']['id'],
                     msg['message'],
                     badges,
@@ -114,7 +100,7 @@ def conv(filepath):
             case 'twitch':
                 dict_append(
                     msg['timestamp'],
-                    str_cut(msg['author']['display_name'], 20),
+                    util.str_cut(msg['author']['display_name'], 20),
                     msg['author']['name'],
                     msg['message'],
                     badges,
@@ -128,8 +114,8 @@ def conv(filepath):
         )
 
     # writing msg count and table
-    add(filename, 'messages: %s, users: %s' % (len(chat), len(users)))
-    add(filename, users_table.get_string(sortby='Badges', reversesort=True))
+    util.append(filename, 'messages: %s, users: %s' % (len(chat), len(users)))
+    util.append(filename, users_table.get_string(sortby='Badges', reversesort=True))
 
     # writing messages
     delay_time = 0
@@ -160,7 +146,9 @@ def conv(filepath):
         timestr = str(
             datetime.timedelta(microseconds=int(all_time))
         )  # datetime.datetime.fromtimestamp(history[i]['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-        add(filename, f'{timestr[:-5]}{icon}{username}: {history[i]["message"]}')
+        util.append(
+            filename, f'{timestr[:-5]}{icon}{username}: {history[i]["message"]}'
+        )
 
     log('')
 
