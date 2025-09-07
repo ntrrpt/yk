@@ -1,0 +1,10 @@
+# [url] [quality] [regex/filterword]
+
+https://www.twitch.tv/robocosan_hololive
+https://www.twitch.tv/sakuramiko_hololive
+https://www.twitch.tv/akaihaato_hololive
+https://www.twitch.tv/minatoaquach_hololive
+https://www.twitch.tv/akirosenthal_hololive
+https://www.twitch.tv/natsuiromatsuri_hololive
+https://www.twitch.tv/murasakishionch_hololive
+https://www.twitch.tv/nakiriayame_hololive
