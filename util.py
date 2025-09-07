@@ -44,25 +44,23 @@ def esc(name: str, replacement: str = '_') -> str:
         else:
             safe_chars.append(ch)
 
-    safe = ''.join(safe_chars)
-    safe = safe.rstrip(' .')
-    safe = re.sub(r'_+', '_', safe)
+    r = ''.join(safe_chars)
+    r = r.rstrip(' .')
+    r = re.sub(r'_+', '_', r)
 
-    return safe[:255]
+    return r[:255]
 
 
 def append(path: Path | str, data: str, end: str = '\n'):
     path = Path(path)
     with open(path, 'a', encoding='utf-8') as f:
         f.write(data + end)
-    log.trace(f'{path} appended')
 
 
 def write(path: Path | str, data: str, end: str = '\n'):
     path = Path(path)
     with open(path, 'w', encoding='utf-8') as f:
         f.write(data + end)
-    log.trace(f'{path} writed')
 
 
 def delete(path: Path | str):
