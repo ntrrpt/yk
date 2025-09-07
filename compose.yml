@@ -17,6 +17,8 @@ services:
       # context: https://github.com/ntrrpt/yakayaka.git
       context: .
       args:
+        PGID: 1000
+        PUID: 1000
         # update yt-dlp/deps on every container start
         # (because google likes to break things)
         FORCE_UV_SYNC_ON_START: YES
@@ -44,6 +46,8 @@ services:
       # context: https://github.com/ntrrpt/yakayaka.git
       context: .
       args:
+        PGID: 1000
+        PUID: 1000
         # (and twitch sometimes too)
         FORCE_UV_SYNC_ON_START: YES
     volumes:
