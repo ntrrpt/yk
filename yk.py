@@ -1,28 +1,29 @@
 #!/usr/bin/env python3
 from contextlib import suppress
-from loguru import logger
 import json
 import shlex
 import threading
-import requests
 import time
 import os
 import sys
 import datetime
 import subprocess
-import shutil
-import psutil
 import signal
 import re
-import yt_dlp
 import jc
 import optparse
-import pathlib
 import codecs
+
+from loguru import logger
+import requests
+import psutil
+import yt_dlp
+import util
 
 threads = []
 unload = False
 
+# fmt: off
 ytdlp_config = {
     'quiet': True,
     'playlist_items': 0,
@@ -66,36 +67,24 @@ _comm_ytarchive = [
     "--write-mux-file",
     "--no-merge"
 ]
+# fmt: on
 
-def date_time(format):
-    return datetime.datetime.now().strftime(format)
 
-def fileDel(filename):
-    rem_file = pathlib.Path(filename)
-    rem_file.unlink(missing_ok=True)
-
-def ntfy(title, text, url = ''):
-    if not options.ntfy_id: # https://ntfy.sh/docs
+def ntfy(title, text, url=''):
+    if not options.ntfy_id:  # https://ntfy.sh/docs
         return
 
     with suppress(Exception):
         requests.post(
-            "https://ntfy.sh/" + options.ntfy_id, timeout=10,
-                data = text.encode(encoding='utf-8'),
-                headers = {
-                    "title": title.encode(encoding='utf-8'),
-                    "click": url.encode(encoding='utf-8')
-                }
+            'https://ntfy.sh/' + options.ntfy_id,
+            timeout=10,
+            data=text.encode(encoding='utf-8'),
+            headers={
+                'title': title.encode(encoding='utf-8'),
+                'click': url.encode(encoding='utf-8'),
+            },
         )
 
-def date_time(format):
-    return datetime.datetime.now().strftime(format)
-
-def str_cut(string, letters, postfix='...'):
-    return string[:letters] + (string[letters:] and postfix)
-
-def str_fix(string):
-    return str_cut(re.sub(r'[/\\?%*:{}【】|"<>]', '', string), 100, '')
 
 def dump_stream(input_dict):
     def dump_stream_json(url):
@@ -103,8 +92,8 @@ def dump_stream(input_dict):
             return y.extract_info(url, download=False)
 
     def dump_thumb(dir, video_id):
-        hq_blank = "https://i.ytimg.com/vi/%s/hqdefault.jpg"
-        max_blank = "https://i.ytimg.com/vi/%s/maxresdefault.jpg"
+        hq_blank = 'https://i.ytimg.com/vi/%s/hqdefault.jpg'
+        max_blank = 'https://i.ytimg.com/vi/%s/maxresdefault.jpg'
 
         for blank in [max_blank, hq_blank]:
             with requests.get(blank % video_id, stream=True) as request:
@@ -119,21 +108,24 @@ def dump_stream(input_dict):
     stream_json = dump_stream_json(input_dict['url'])
 
     match stream_json['extractor']:
-        case "youtube":
-            url_title = str_fix(stream_json['title'][:-17])
-            url_name = str_fix(stream_json['uploader'])
+        case 'youtube':
+            url_title = stream_json['title'][:-17]
+            url_name = stream_json['uploader']
 
-        case "twitch:stream":
-            url_title = str_fix(stream_json['description'])
-            url_name = str_fix(stream_json['uploader'])
+        case 'twitch:stream':
+            url_title = stream_json['description']
+            url_name = stream_json['uploader']
 
-        case "wasdtv:stream":
-            url_title = str_fix(stream_json['fulltitle'])
-            url_name = str_fix(stream_json['webpage_url_basename'])
+        case 'wasdtv:stream':
+            url_title = stream_json['fulltitle']
+            url_name = stream_json['webpage_url_basename']
 
         case _:
-            url_title = str_fix(stream_json['title'])
-            url_name = str_fix(stream_json['uploader'])
+            url_title = stream_json['title']
+            url_name = stream_json['uploader']
+
+    url_title = util.str_esc(url_title)
+    url_name = util.str_esc(url_name)
 
     if input_dict['regex']:
         regex = input_dict['regex'].lower()
@@ -144,25 +136,20 @@ def dump_stream(input_dict):
         if not re_title and not re_desc:
             return
 
-    file_title = f'[{date_time("%y-%m-%d %H_%M_%S")}] {url_name} - {url_title}'
-    file_dir = f"{options.output}/[live] {file_title.rstrip()}"
-    dirtitle = "%s/%s" % (file_dir, file_title)
+    file_title = f'[{util.dt_now()}] {url_name} - {url_title}'
+    file_dir = f'{options.output}/[live] {file_title.rstrip()}'
+    dirtitle = '%s/%s' % (file_dir, file_title)
 
     os.makedirs(file_dir, exist_ok=True)
 
     # dump preview image
     if 'youtube' in stream_json['extractor']:
-        dump_thumb(dirtitle + ".jpg", stream_json['id'])
+        dump_thumb(dirtitle + '.jpg', stream_json['id'])
 
     # saving stream info
-    with codecs.open(dirtitle + ".info", 'w', "utf-8") as info:
-        info.write( 
-            json.dumps(
-                stream_json, 
-                indent=10, 
-                ensure_ascii=False, 
-                sort_keys=True
-            )
+    with codecs.open(dirtitle + '.info', 'w', 'utf-8') as info:
+        info.write(
+            json.dumps(stream_json, indent=10, ensure_ascii=False, sort_keys=True)
         )
 
     # notify
@@ -172,38 +159,43 @@ def dump_stream(input_dict):
     # choosing record method
     comm_stream = _comm_streamlink.copy()
     comm_add = [
-        "--url", input_dict['url'],
-        "--output", dirtitle + ".ts",
-        "--default-stream", input_dict['quality']
+        '--url',
+        input_dict['url'],
+        '--output',
+        dirtitle + '.ts',
+        '--default-stream',
+        input_dict['quality'],
     ]
 
     if options.ytdlp:
         comm_stream = _comm_ytdlp.copy()
-        comm_add = ["-o", dirtitle + ".mp4", input_dict['url']]
+        comm_add = ['-o', dirtitle + '.mp4', input_dict['url']]
         if 'twitch' in stream_json['extractor']:
             comm_add.insert(0, '--no-live-from-start')
 
     if options.ytarchive and 'youtube' in stream_json['extractor']:
         comm_stream = _comm_ytarchive.copy()
-        comm_add = ["--output", dirtitle, input_dict['url'], input_dict['quality']]
+        comm_add = ['--output', dirtitle, input_dict['url'], input_dict['quality']]
 
     for i in comm_add:
         comm_stream.append(i)
 
+    # fmt: off
     _comm_chat = [
         'chat_downloader',
         stream_json['webpage_url'],
-        "--output", dirtitle + ".json",
-        "--inactivity_timeout", "99999999"
+        '--output', dirtitle + '.json',
+        '--inactivity_timeout', '99999999',
     ]
+    # fmt: on
 
     # ext stream dump process
-    txt_stream = open(dirtitle + ".log", "a")
+    txt_stream = open(dirtitle + '.log', 'a')
     process_stream = subprocess.Popen(comm_stream, stdout=txt_stream, stderr=txt_stream)
     pid_stream = psutil.Process(process_stream.pid)
 
     # chat saving
-    txt_chat = open(dirtitle + ".chat", "w")
+    txt_chat = open(dirtitle + '.chat', 'w')
     process_chat = subprocess.Popen(_comm_chat, stdout=txt_chat, stderr=txt_chat)
     pid_chat = psutil.Process(process_chat.pid)
 
@@ -227,7 +219,11 @@ def dump_stream(input_dict):
             os.kill(process_stream.pid, signal.SIGTERM)
         else:
             os.waitpid(process_stream.pid, 0)
-            ntfy(f'{url_name} is offline. [{end_time}]', url_title, stream_json['webpage_url'])
+            ntfy(
+                f'{url_name} is offline. [{end_time}]',
+                url_title,
+                stream_json['webpage_url'],
+            )
 
         logger.info(f'[offline] ({url_name} - {url_title}) ({end_time})')
 
@@ -238,7 +234,7 @@ def dump_stream(input_dict):
 
         for file in os.listdir(file_dir):
             if file.endswith('ffmpeg.txt'):
-                fp = "%s/%s" % (file_dir, file)
+                fp = '%s/%s' % (file_dir, file)
                 _comm_merge = shlex.split(open(fp).read())
                 files_to_delete.append(file)
 
@@ -252,13 +248,13 @@ def dump_stream(input_dict):
                 p = proc.poll()
 
                 if p == 0:
-                    for file in files_to_delete:
-                        fp = "%s/%s" % (file_dir, file)
-                        fileDel(fp)
+                    for file in files_to_delete:  # todo list
+                        fp = '%s/%s' % (file_dir, file)
+                        util.delete(fp)
                     break
 
                 if p is not None:
-                    logger.error(f"merge error: {file_dir}")
+                    logger.error(f'merge error: {file_dir}')
                     break
 
     if pid_chat.is_running():
@@ -271,18 +267,20 @@ def dump_stream(input_dict):
     txt_stream.close()
 
     with suppress(Exception):
-        jc.conv(dirtitle + ".json")
+        jc.conv(dirtitle + '.json')
 
-    os.rename(file_dir, f"{options.output}/{file_title.rstrip()}")
+    os.rename(file_dir, f'{options.output}/{file_title.rstrip()}')
+
 
 def check_live(url):
-    c = ['streamlink', '--twitch-disable-hosting', "--url", url]
+    c = ['streamlink', '--twitch-disable-hosting', '--url', url]
     with subprocess.Popen(c, stdout=subprocess.PIPE) as proc:
         while True:
             time.sleep(0.1)
             p = proc.poll()
             if p is not None:
                 return p == 0
+
 
 def dump_list(input):
     lst = {}
@@ -295,8 +293,8 @@ def dump_list(input):
             split = line.split()
 
             url = split[0]
-            regex = ""
-            quality = "best"
+            regex = ''
+            quality = 'best'
 
             if len(split) > 1:
                 quality = split[1]
@@ -307,54 +305,87 @@ def dump_list(input):
             if 'youtube' in url and 'watch?v=' not in url:
                 url += '/live'
 
-            lst[len(lst)] = {
-                'url': url,
-                'regex': regex,
-                'quality': quality
-            }
+            lst[len(lst)] = {'url': url, 'regex': regex, 'quality': quality}
 
     return lst
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     parser = optparse.OptionParser()
-    parser.add_option('-o', '--output', dest='output', default='.', help='Streams output')
+    parser.add_option(
+        '-o', '--output', dest='output', default='.', help='Streams output'
+    )
     parser.add_option('-l', '--log', dest='log_name', default='', help='Log output')
-    parser.add_option('-d', '--delay', dest='delay_check', type=int, default='10', help='Streams check delay')
-    parser.add_option('-s', '--src', dest='src_name', default='list.txt', help='File with channels/streams')
+    parser.add_option(
+        '-d',
+        '--delay',
+        dest='delay_check',
+        type=int,
+        default='10',
+        help='Streams check delay',
+    )
+    parser.add_option(
+        '-s',
+        '--src',
+        dest='src_name',
+        default='list.txt',
+        help='File with channels/streams',
+    )
     parser.add_option('--ntfy', dest='ntfy_id', help='ntfy.sh channel')
-    parser.add_option('--dlp', dest='ytdlp', action='store_true', help='Use yt-dlp instead of streamlink')
-    parser.add_option('--yta', dest='ytarchive', action='store_true', help='Use ytarchive for youtube streams')
+    parser.add_option(
+        '--dlp',
+        dest='ytdlp',
+        action='store_true',
+        help='Use yt-dlp instead of streamlink',
+    )
+    parser.add_option(
+        '--yta',
+        dest='ytarchive',
+        action='store_true',
+        help='Use ytarchive for youtube streams',
+    )
     options, arguments = parser.parse_args()
 
     if options.output != '.':
         os.makedirs(options.output, exist_ok=True)
 
     if not options.log_name:
-        options.log_name = "%s/%s.txt" % (options.output, date_time('%Y-%m-%d'))
+        options.log_name = '%s/%s.txt' % (options.output, util.dt_now('%Y-%m-%d'))
 
     logger.remove(0)
-    logger.add(sys.stderr, format = "<level>[{time:DD-MMM-YYYY HH:mm:ss}]</level> {message}", backtrace = True, diagnose = True,  colorize = True, level = 5)
-    logger.add(options.log_name, format = "[{time:DD-MMM-YYYY HH:mm:ss}] {message}", backtrace = True, diagnose = True,  colorize = True, level = 5)
+    logger.add(
+        sys.stderr,
+        format='<level>[{time:DD-MMM-YYYY HH:mm:ss}]</level> {message}',
+        backtrace=True,
+        diagnose=True,
+        colorize=True,
+        level=5,
+    )
+    logger.add(
+        options.log_name,
+        format='[{time:DD-MMM-YYYY HH:mm:ss}] {message}',
+        backtrace=True,
+        diagnose=True,
+        colorize=True,
+        level=5,
+    )
 
     # for binaries in project folder
     pwdir = os.path.dirname(os.path.realpath(__file__))
-    os.environ["PATH"] = os.pathsep.join([
-        pwdir,
-        os.environ["PATH"]
-    ])
+    os.environ['PATH'] = os.pathsep.join([pwdir, os.environ['PATH']])
 
     try:
         while True:
             urls = dump_list(options.src_name)
 
             if not urls:
-                logger.error("no channels for monitoring")
+                logger.error('no channels for monitoring')
                 break
 
             for i in range(len(urls)):
                 print(f'({i + 1} / {len(urls)}) {len(threads)} is streaming.', end='\r')
                 if urls[i]['url'] not in threads and check_live(urls[i]['url']):
-                    T = threading.Thread(target=dump_stream, args=(urls[i], ))
+                    T = threading.Thread(target=dump_stream, args=(urls[i],))
                     T.start()
 
                 time.sleep(options.delay_check)
