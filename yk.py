@@ -88,7 +88,7 @@ def ntfy(title, text, url=''):
 def dump_stream(str_dict):
     start_time = time.time()
 
-    if args.cookies:
+    if args.cookies.is_file():
         ytdlp_config['cookiefile'] = args.cookies
 
     if args.proxy:
