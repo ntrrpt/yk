@@ -61,14 +61,11 @@ _c_ytarchive = [
     "ytarchive",
     "--threads", "3",
     "--trace",
-    "--verbose",
     "--no-frag-files",
     "--no-save-state",
     "--write-mux-file",
     "--no-merge",
-    '--debug',
-    '--thumbnail',
-    '--add-metadata',
+    '--add-metadata'
 ]  # fmt: skip
 
 
@@ -91,9 +88,13 @@ def ntfy(title, text, url=''):
 def dump_stream(str_dict):
     start_time = time.time()
 
+    if args.cookies:
+        ytdlp_config['cookiefile'] = args.cookies
+
+    if args.proxy:
+        ytdlp_config['proxy'] = random.choice(args.proxy)
+
     with yt_dlp.YoutubeDL(ytdlp_config) as y:
-        if args.proxy:
-            ytdlp_config['proxy'] = random.choice(args.proxy)
         str_json = y.extract_info(str_dict['url'], download=False)
 
     match str_json['extractor']:
@@ -151,36 +152,47 @@ def dump_stream(str_dict):
 
     log.success(f'[online] ({str_user} - {str_title})')
 
-    c_str = _c_streamlink.copy()
-    c_str += [
+    c = _c_streamlink.copy()
+    c += util.http_cookies(args.cookies)
+    c += [
         '--url', str_dict['url'],
         '--output', str_blank + '.ts',
-        '--default-stream', str_dict['quality'],
+        '--default-stream', str_dict['quality']
     ]  # fmt: skip
+
     if args.proxy:
-        c_str += ['--http-proxy', random.choice(args.proxy)]
+        c += ['--http-proxy', random.choice(args.proxy)]
 
     if args.dlp:
-        c_str = _c_ytdlp.copy()
-        c_str += ['-o', str_blank + '.mp4', str_dict['url']]
+        c = _c_ytdlp.copy()
+        c += ['-o', str_blank + '.mp4', str_dict['url']]
 
         if 'youtube' in str_json['extractor']:
-            c_str.insert(1, '--live-from-start')
+            c.insert(1, '--live-from-start')
 
         if args.proxy:
-            c_str.insert(1, '--proxy')
-            c_str.insert(2, random.choice(args.proxy))
+            c.insert(1, '--proxy')
+            c.insert(2, random.choice(args.proxy))
+
+        if args.cookies.is_file():
+            c.insert(1, '--cookies')
+            c.insert(2, str(args.cookies))
 
     if args.yta and 'youtube' in str_json['extractor']:
-        c_str = _c_ytarchive.copy()
-        c_str += [
+        c = _c_ytarchive.copy()
+        c += [
             '--output', str_blank,
             str_dict['url'],
             str_dict['quality'],
         ]  # fmt: skip
+
         if args.proxy:
-            c_str.insert(1, '--proxy')
-            c_str.insert(2, random.choice(args.proxy))
+            c.insert(1, '--proxy')
+            c.insert(2, random.choice(args.proxy))
+
+        if args.cookies.is_file():
+            c.insert(1, '--cookies')
+            c.insert(2, str(args.cookies))
 
     c_chat = [
         'chat_downloader', 
@@ -188,15 +200,21 @@ def dump_stream(str_dict):
         '--max_attempts', '99999999', 
         str_json['webpage_url']
     ]  # fmt: skip
+
+    if args.cookies.is_file():
+        c_chat.insert(1, '--cookies')
+        c_chat.insert(2, str(args.cookies))
+
     if args.proxy:
         c_chat.insert(1, '--proxy')
         c_chat.insert(2, random.choice(args.proxy))
 
-    log.trace(c_str)
+    log.trace(' '.join(c))
+    log.trace(' '.join(c_chat))
 
     # str process
     str_txt = open(str_blank + '.log', 'a')
-    str_proc = subprocess.Popen(c_str, stdout=str_txt, stderr=str_txt)
+    str_proc = subprocess.Popen(c, stdout=str_txt, stderr=str_txt)
     str_pid = psutil.Process(str_proc.pid)
 
     # chat process
@@ -212,7 +230,7 @@ def dump_stream(str_dict):
         if not str_pid.is_running():
             break
 
-        if not util.WINDOWS and str_pid.status() == psutil.STATUS_ZOMBIE:
+        if str_pid.status() == psutil.STATUS_ZOMBIE:
             break
 
     end_time = datetime.timedelta(seconds=int(f'{time.time() - start_time:.{0}f}'))
@@ -282,6 +300,8 @@ def dump_stream(str_dict):
 
 def check_live(url):
     c = ['streamlink', '--twitch-disable-hosting', '--url', url]
+    c += util.http_cookies(args.cookies)
+
     if args.proxy:
         c += ['--http-proxy', random.choice(args.proxy)]
 
@@ -315,6 +335,10 @@ def dump_list(files):
 
                 if len(split) > 1:
                     quality = split[1]
+                    if args.yta and quality not in util.yta_q:
+                        log.critical(f"'{quality}' not supported in ytarchive")
+                        log.info(f"choose something from '{', '.join(util.yta_q)}'")
+                        sys.exit(1)
 
                 if len(split) > 2:
                     regex = split[2]
@@ -339,8 +363,9 @@ if __name__ == '__main__':
     add('-d', '--delay',  type=int,  default=int(evg("YK_DELAY", 15)),      help='streams check delay')
     add('-n', '--ntfy',   type=str,  default=str(evg("YK_NTFY", '')),       help='ntfy.sh channel')
 
-    add('-s', '--src',   nargs='+', default=None, help='files with channels/streams (list1.txt, /root/list2.txt)')
-    add('-p', '--proxy', nargs='+', default=None, help='proxies (socks5://user:pass@127.0.0.1:1080)')
+    add('-s', '--src',     nargs='+', default=None, help='files with channels/streams (list1.txt, /root/list2.txt)')
+    add('-p', '--proxy',   nargs='+', default=None, help='proxies (socks5://user:pass@127.0.0.1:1080)')
+    add('-c', '--cookies', type=Path, default=Path(evg("YK_COOKIES", '')), help='path to cookies.txt (netscape format)')
 
     add('--dlp',           action='store_true', help='use yt-dlp instead of streamlink')
     add('--yta',           action='store_true', help='use ytarchive for youtube streams')
