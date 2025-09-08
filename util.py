@@ -1,18 +1,29 @@
 from loguru import logger as log
+from http.cookiejar import MozillaCookieJar
 from datetime import datetime
 import pprint
 from pathlib import Path
 import sys
 import re
-import platform
 import requests
 import unicodedata
 
-WINDOWS: any = (
-    [int(x) for x in platform.version().split('.')]
-    if platform.system() == 'Windows'
-    else False
-)
+yta_q = [
+    'audio_only',
+    '144p',
+    '240p',
+    '360p',
+    '480p',
+    '720p',
+    '720p60',
+    '1080p',
+    '1080p60',
+    '1440p',
+    '1440p60',
+    '2160p',
+    '2160p60',
+    'best',
+]
 
 
 def str_cut(string: str, letters: int, postfix: str = '...'):
@@ -30,21 +41,21 @@ def float_fmt(number: int, digits: int):
 
 def esc(name: str, replacement: str = '_') -> str:
     allowed_brackets = '()[]{}'
-    safe_chars = []
+    r = []
 
     for ch in name:
         cat = unicodedata.category(ch)
 
         if ch in '<>:"/\\|?*' or ch == '\x00':
-            safe_chars.append(replacement)
+            r.append(replacement)
         elif ch in allowed_brackets:
-            safe_chars.append(ch)
+            r.append(ch)
         elif cat.startswith(('P', 'S', 'C')):
-            safe_chars.append(replacement)
+            r.append(replacement)
         else:
-            safe_chars.append(ch)
+            r.append(ch)
 
-    r = ''.join(safe_chars)
+    r = ''.join(r)
     r = r.rstrip(' .')
     r = re.sub(r'_+', '_', r)
 
@@ -89,7 +100,7 @@ def pf(data: str):
 def die(s: str = ''):
     if s:
         log.critical(str(s))
-    sys.exit()
+    sys.exit(1)
 
 
 def yt_dump_thumb(path: Path | str, video_id: str, proxy: str | None = None):
@@ -113,3 +124,49 @@ def yt_dump_thumb(path: Path | str, video_id: str, proxy: str | None = None):
 
         if path.exists() and path.stat().st_size > 0:
             return
+
+
+def http_cookies(path: Path | str):
+    path = Path(path)
+    if not path.is_file():
+        return []
+
+    cookie_args = []
+
+    # https://github.com/streamlink/streamlink/issues/3370#issuecomment-846261921
+    pattern = re.compile(
+        r'(?P<site>.*?)\t(TRUE|FALSE)\t/\t(TRUE|FALSE)\t([0-9]{1,})\t(?P<cookiename>.+)\t(?P<cookievalue>.+)'
+    )
+
+    with open(path, 'r') as f:
+        lines = f.readlines()
+
+    for line in lines[2:]:
+        line = line.strip()
+        match = pattern.match(line)
+        if match:
+            name = match.group('cookiename')
+            value = match.group('cookievalue')
+            if name and value:
+                cookie_args.append('--http-cookie')
+                cookie_args.append(f'{name}={value}')
+
+    return cookie_args
+
+
+def _http_cookies(path: Path | str):
+    path = Path(path)
+    if not path.is_file():
+        return []
+
+    c_args = []
+
+    cj = MozillaCookieJar(path)
+    cj.load()  # ignore_discard=True, ignore_expires=True
+    cd = requests.utils.dict_from_cookiejar(cj)
+
+    for name, value in cd.items():
+        if name and value:
+            c_args += ['--http-cookie', f'{name}={value}']
+
+    return c_args
