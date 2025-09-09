@@ -19,6 +19,7 @@ from loguru import logger as log
 import requests
 import psutil
 import yt_dlp
+
 import util
 
 threads = []
@@ -67,22 +68,6 @@ _c_ytarchive = [
     "--no-merge",
     '--add-metadata'
 ]  # fmt: skip
-
-
-def ntfy(title, text, url=''):
-    if not args.ntfy:  # https://ntfy.sh/docs
-        return
-
-    with suppress(Exception):
-        requests.post(
-            'https://ntfy.sh/' + args.ntfy_id,
-            timeout=10,
-            data=text.encode(encoding='utf-8'),
-            headers={
-                'title': title.encode(encoding='utf-8'),
-                'click': url.encode(encoding='utf-8'),
-            },
-        )
 
 
 def dump_stream(str_dict):
@@ -147,8 +132,12 @@ def dump_stream(str_dict):
     with open(str_blank + '.info', 'w', encoding='utf-8') as f:
         f.write(str(str_info))
 
-    # notify
-    ntfy(f'{str_user} is online.', str_title, str_json['webpage_url'])
+    util.ntfy(
+        title=f'{str_user} is online.',
+        message=str_title,
+        topic=args.ntfy,
+        str_json=str_json,
+    )
 
     log.success(f'[online] ({str_user} - {str_title})')
 
@@ -242,10 +231,10 @@ def dump_stream(str_dict):
             os.kill(str_proc.pid, signal.SIGTERM)
         else:
             os.waitpid(str_proc.pid, 0)
-            ntfy(
-                f'{str_user} is offline. [{end_time}]',
-                str_title,
-                str_json['webpage_url'],
+            util.ntfy(
+                title=f'{str_user} is offline. [{end_time}]',
+                message=str_title,
+                topic=args.ntfy,
             )
 
         log.info(f'[offline] ({str_user} - {str_title}) ({end_time})')
@@ -335,7 +324,14 @@ def dump_list(files):
 
                 if len(split) > 1:
                     quality = split[1]
-                    if args.yta and quality not in util.yta_q:
+
+                    g = [
+                        args.yta,
+                        quality not in util.yta_q,
+                        'youtube' in url or 'youtu.be' in url,
+                    ]
+
+                    if all(g):
                         log.critical(f"'{quality}' not supported in ytarchive")
                         log.info(f"choose something from '{', '.join(util.yta_q)}'")
                         sys.exit(1)
@@ -382,6 +378,15 @@ if __name__ == '__main__':
         log.remove()
         log.add(sys.stderr, level='TRACE')
         log.add(log_path, level='TRACE', encoding='utf-8')
+
+    for var, target in [
+        ('YK_OUTPUT', args.output),
+        ('YK_LOG_PATH', args.log),
+        ('YK_DELAY', args.delay),
+        ('YK_NTFY', args.ntfy),
+        ('YK_COOKIES', args.cookies),
+    ]:
+        log.trace(f'{var}: {target}')
 
     for var, target in [
         ('YK_ARGS_STREAMLINK', _c_streamlink),

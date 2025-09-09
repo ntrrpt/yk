@@ -8,6 +8,7 @@ requires-python = ">=3.13"
 dependencies = [
     "chat-downloader>=0.2.8",
     "loguru>=0.7.3",
+    "ntfy-lite>=1.0.3",
     "prettytable>=3.15.1",
     "psutil>=7.0.0",
     "requests>=2.32.3",

@@ -7,7 +7,10 @@ import sys
 import re
 import requests
 import unicodedata
+import ntfy_lite
 
+hq_blank = 'https://i.ytimg.com/vi/%s/hqdefault.jpg'
+max_blank = 'https://i.ytimg.com/vi/%s/maxresdefault.jpg'
 yta_q = [
     'audio_only',
     '144p',
@@ -24,6 +27,40 @@ yta_q = [
     '2160p60',
     'best',
 ]
+
+
+def ntfy(
+    title: str,
+    message: str = '',
+    topic: str = '',
+    str_json: dict = {},
+):
+    if not topic:
+        return
+
+    actions = []
+
+    if 'uploader_url' in str_json:
+        actions.append(
+            ntfy_lite.ViewAction(
+                label='user', url=str_json['uploader_url'], clear=False
+            )
+        )
+
+    if 'webpage_url' in str_json:
+        actions.append(
+            ntfy_lite.ViewAction(
+                label='stream', url=str_json['webpage_url'], clear=False
+            )
+        )
+
+    ntfy_lite.push(
+        topic,
+        title,
+        priority=ntfy_lite.Priority.DEFAULT,
+        message=message,
+        actions=actions,
+    )
 
 
 def str_cut(string: str, letters: int, postfix: str = '...'):
@@ -105,16 +142,12 @@ def die(s: str = ''):
 
 def yt_dump_thumb(path: Path | str, video_id: str, proxy: str | None = None):
     path = Path(path)
-    hq_blank = 'https://i.ytimg.com/vi/%s/hqdefault.jpg'
-    max_blank = 'https://i.ytimg.com/vi/%s/maxresdefault.jpg'
-
     proxies = {'http': proxy, 'https': proxy} if proxy else None
 
     for blank in [max_blank, hq_blank]:
+        url = blank % video_id
         try:
-            with requests.get(
-                blank % video_id, stream=True, proxies=proxies
-            ) as request:
+            with requests.get(url, stream=True, proxies=proxies) as request:
                 if request.status_code == 200:
                     with open(path, 'wb') as file:
                         file.write(request.content)
@@ -123,7 +156,7 @@ def yt_dump_thumb(path: Path | str, video_id: str, proxy: str | None = None):
             continue
 
         if path.exists() and path.stat().st_size > 0:
-            return
+            return url
 
 
 def http_cookies(path: Path | str):
@@ -131,7 +164,7 @@ def http_cookies(path: Path | str):
     if not path.is_file():
         return []
 
-    cookie_args = []
+    c_args = []
 
     # https://github.com/streamlink/streamlink/issues/3370#issuecomment-846261921
     pattern = re.compile(
@@ -148,10 +181,9 @@ def http_cookies(path: Path | str):
             name = match.group('cookiename')
             value = match.group('cookievalue')
             if name and value:
-                cookie_args.append('--http-cookie')
-                cookie_args.append(f'{name}={value}')
+                c_args += ['--http-cookie', f'{name}={value}']
 
-    return cookie_args
+    return c_args
 
 
 def _http_cookies(path: Path | str):
