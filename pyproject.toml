@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "monitoring and recording livestreams"
 authors = ["ntrrpt"]
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "chat-downloader>=0.2.8",
     "loguru>=0.7.3",
