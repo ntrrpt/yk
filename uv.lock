@@ -379,7 +379,7 @@ wheels = [
 
 [[package]]
 name = "streamlink"
-version = "7.1.3"
+version = "7.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -394,11 +394,11 @@ dependencies = [
     { name = "urllib3" },
     { name = "websocket-client" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8f/f9/d4c1c969863c71af2af876e0ae580c295278a7e5d5ee5bfb50c888797a11/streamlink-7.1.3.tar.gz", hash = "sha256:f64b1a499b6d42af3965a39f30aef2e9e36f3d2d32a3311b8688af342bd5ba7a", size = 772024, upload-time = "2025-02-14T19:04:57.196Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/51/8c/6c3d281451dd46751b03a16b297bdf16b3145e5051c1c3c7335a59576c2f/streamlink-7.6.0.tar.gz", hash = "sha256:a1df953fab7dab55c61f563b533ce237159a1b48f6159bec95e907857fc09266", size = 808110, upload-time = "2025-09-08T17:21:03.559Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8c/b2/f15388320b3e6ba756f919d7199239f64095a03014487088815c9dec5968/streamlink-7.1.3-py3-none-any.whl", hash = "sha256:1ee57d7abd91408a9e23498858ed9b096c41aabc1fedd44c7d3c7152a8b57460", size = 531362, upload-time = "2025-02-14T19:04:51.351Z" },
-    { url = "https://files.pythonhosted.org/packages/ea/d6/7e07bdc71f45e94d72423493277bcf5e443d845922d9cb361abd844cbbe2/streamlink-7.1.3-py3-none-win32.whl", hash = "sha256:a287b8b1b4a25c9d4ba47b132d242a3c19b8af1f9cb11c297f6c6074efafa358", size = 531375, upload-time = "2025-02-14T19:04:53.159Z" },
-    { url = "https://files.pythonhosted.org/packages/3e/f9/96e134debed20c070e02232cf5e868abeb69e9da396998917fc9873855c6/streamlink-7.1.3-py3-none-win_amd64.whl", hash = "sha256:f5ecf416d0fd70b46989075c7aeae0d1c2fb8117c75d92ed251a1b0028ac7a38", size = 531378, upload-time = "2025-02-14T19:04:55.513Z" },
+    { url = "https://files.pythonhosted.org/packages/60/fd/4a6cc0fe614a421a7722d6842624de8221f11eb2a1ec4fc58d570f564aa3/streamlink-7.6.0-py3-none-any.whl", hash = "sha256:17da9ac9369d3741fdcaf938b5b0aea8ac12e7944e34ed329af427497b50def4", size = 551368, upload-time = "2025-09-08T17:20:57.819Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/25/3d2d507e85d60981f676e31ce56ebe56b5a139cb4e497bf7cbf807e631f3/streamlink-7.6.0-py3-none-win32.whl", hash = "sha256:289d05d4937dbf21166f0e508c044440b7cb73cd00736f0d6a2da63f4c56ec4f", size = 551382, upload-time = "2025-09-08T17:20:59.982Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/9c/3e24f0fd98bc07f90f765326f2be3c876fb0e06d5c1b131e92506b6b429b/streamlink-7.6.0-py3-none-win_amd64.whl", hash = "sha256:bfe4ca2076f6deacbe6888cd853663142fa21ea194b3c1f10e218b3c18eb8494", size = 551387, upload-time = "2025-09-08T17:21:02.019Z" },
 ]
 
 [[package]]
@@ -506,8 +506,8 @@ requires-dist = [
     { name = "prettytable", specifier = ">=3.15.1" },
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "requests", specifier = ">=2.32.3" },
-    { name = "streamlink", specifier = ">=7.1.3" },
-    { name = "yt-dlp", specifier = ">=2025.2.19" },
+    { name = "streamlink", specifier = ">=7.6.0" },
+    { name = "yt-dlp", specifier = ">=2025.9.5" },
 ]
 
 [package.metadata.requires-dev]
@@ -515,9 +515,9 @@ dev = [{ name = "ruff" }]
 
 [[package]]
 name = "yt-dlp"
-version = "2025.2.19"
+version = "2025.9.5"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/53/36/ef300ba4a228b74612d4013b43ed303a0d6d2de17a71fc37e0b821577e0a/yt_dlp-2025.2.19.tar.gz", hash = "sha256:f33ca76df2e4db31880f2fe408d44f5058d9f135015b13e50610dfbe78245bea", size = 2929199, upload-time = "2025-02-19T02:49:14.589Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/50/b2/fb255d991857a6a8b2539487ed6063e7bf318f19310d81f039dedb3c2ad6/yt_dlp-2025.9.5.tar.gz", hash = "sha256:9ce080f80b2258e872fe8a75f4707ea2c644e697477186e20b9a04d9a9ea37cf", size = 3045982, upload-time = "2025-09-05T23:07:53.962Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9e/45/6d1b759e68f5363b919828fb0e0c167a1cd5003b5b7c74cc0f0c2096be4f/yt_dlp-2025.2.19-py3-none-any.whl", hash = "sha256:3ed218eaeece55e9d715afd41abc450dc406ee63bf79355169dfde312d38fdb8", size = 3186543, upload-time = "2025-02-19T02:49:12.523Z" },
+    { url = "https://files.pythonhosted.org/packages/06/64/b3cc116e4f209c493f23d6af033c60ba32df74e086190fbed2bdc0073d12/yt_dlp-2025.9.5-py3-none-any.whl", hash = "sha256:68a03b5c50e3d0f6af7244bd4bf491c1b12e4e2112b051cde05cdfd2647eb9a8", size = 3272317, upload-time = "2025-09-05T23:07:51.396Z" },
 ]
