@@ -56,3 +56,10 @@ services:
       - ./:/tmp/log
 
     command: []
+
+#  bgutil:
+#    image: brainicism/bgutil-ytdlp-pot-provider
+#    container_name: bgutil
+#    network_mode: host
+#    init: true
+#    restart: unless-stopped
