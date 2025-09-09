@@ -363,8 +363,8 @@ if __name__ == '__main__':
     add('-d', '--delay',  type=int,  default=int(evg("YK_DELAY", 15)),      help='streams check delay')
     add('-n', '--ntfy',   type=str,  default=str(evg("YK_NTFY", '')),       help='ntfy.sh channel')
 
-    add('-s', '--src',     nargs='+', default=None, help='files with channels/streams (list1.txt, /root/list2.txt)')
-    add('-p', '--proxy',   nargs='+', default=None, help='proxies (socks5://user:pass@127.0.0.1:1080)')
+    add('-s', '--src',     nargs='+', default=[], help='files with channels/streams (list1.txt, /root/list2.txt)')
+    add('-p', '--proxy',   nargs='+', default=[], help='proxies (socks5://user:pass@127.0.0.1:1080)')
     add('-c', '--cookies', type=Path, default=Path(evg("YK_COOKIES", '')), help='path to cookies.txt (netscape format)')
 
     add('--dlp',           action='store_true', help='use yt-dlp instead of streamlink')
@@ -374,14 +374,6 @@ if __name__ == '__main__':
 
     args = ap.parse_args()
 
-    if not args.src:
-        env = evg('YK_SRC_LISTS', '')
-        args.src = env.split(' ') if env else []
-
-    if not args.proxy:
-        env = evg('YK_PROXIES', '')
-        args.proxy = env.split(' ') if env else []
-
     args.log.mkdir(parents=True, exist_ok=True)
     log_path = args.log / util.dt_now('%Y-%m-%d.log')
     log.add(log_path, encoding='utf-8')
@@ -390,6 +382,18 @@ if __name__ == '__main__':
         log.remove()
         log.add(sys.stderr, level='TRACE')
         log.add(log_path, level='TRACE', encoding='utf-8')
+
+    for var, target in [
+        ('YK_ARGS_STREAMLINK', _c_streamlink),
+        ('YK_ARGS_YTDLP', _c_ytdlp),
+        ('YK_ARGS_YTARCHIVE', _c_ytarchive),
+        ('YK_SRC_LISTS', args.src),
+        ('YK_PROXIES', args.proxy),
+    ]:
+        env = evg(var, '')
+        if env:
+            target += env.split()
+        log.trace(f'{var}: {target}')
 
     if not dump_list(args.src):
         util.die('no channels in files')
