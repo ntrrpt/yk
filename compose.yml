@@ -11,11 +11,10 @@ services:
       # YK_PROXIES: socks5://127.0.0.1:1080
       YK_LOG_PATH: /tmp/log
       YK_DELAY: 300 # big delay for yt
-      # YK_NTFY: test_channel
+      YK_NTFY: test_channel
       YK_SRC_LISTS: /tmp/list-yt.txt
     build:
-      # context: https://github.com/ntrrpt/yakayaka.git
-      context: .
+      context: https://github.com/ntrrpt/yakayaka.git
       args:
         PGID: 1000
         PUID: 1000
@@ -41,13 +40,11 @@ services:
     stdin_open: true
     
     environment:
-      # YK_PROXIES: socks5://127.0.0.1:1080
       YK_LOG_PATH: /tmp/log
       YK_DELAY: 15
       YK_SRC_LISTS: /tmp/list-tw.txt
     build:
-      # context: https://github.com/ntrrpt/yakayaka.git
-      context: .
+      context: https://github.com/ntrrpt/yakayaka.git
       args:
         PGID: 1000
         PUID: 1000
