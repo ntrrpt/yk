@@ -6,6 +6,7 @@ authors = ["ntrrpt"]
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "bgutil-ytdlp-pot-provider>=1.2.2",
     "chat-downloader>=0.2.8",
     "loguru>=0.7.3",
     "prettytable>=3.15.1",
