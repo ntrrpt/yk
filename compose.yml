@@ -27,6 +27,9 @@ services:
       - ./list-yt.txt:/tmp/list-yt.txt
       - ./:/tmp/log
 
+      # po token extractor plugin 
+      # - ./bgutil-ytdlp-pot-provider.zip:/etc/yt-dlp/plugins/bgutil-ytdlp-pot-provider.zip
+
     command: ['--yta']
 
   yk-tw:
