@@ -28,6 +28,8 @@ yta_q = [
     'best',
 ]
 
+lat_esc = lambda t: t.encode('latin-1', errors='replace').decode(encoding='latin-1')
+
 
 def ntfy(
     title: str,

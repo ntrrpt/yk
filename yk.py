@@ -133,8 +133,8 @@ def dump_stream(str_dict):
         f.write(str(str_info))
 
     util.ntfy(
-        title=util.esc(f'[ONLINE] {str_user}'),
-        message=util.esc(str_title),
+        title=util.lat_esc(f'[ONLINE] {str_user}'),
+        message=util.lat_esc(str_title),
         topic=args.ntfy,
         str_json=str_json,
     )
@@ -232,8 +232,8 @@ def dump_stream(str_dict):
         else:
             os.waitpid(str_proc.pid, 0)
             util.ntfy(
-                title=util.esc(f'[OFFLINE] {str_user} ({end_time})'),
-                message=util.esc(str_title),
+                title=util.lat_esc(f'[offline] {str_user} ({end_time})'),
+                message=util.lat_esc(str_title),
                 topic=args.ntfy,
             )
 
