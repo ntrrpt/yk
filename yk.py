@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from contextlib import suppress
 from pathlib import Path
 import json
 import shlex
@@ -16,9 +15,9 @@ import argparse
 import random
 
 from loguru import logger as log
-import requests
 import psutil
 import yt_dlp
+import apprise
 
 import util
 
@@ -132,14 +131,9 @@ def dump_stream(str_dict):
     with open(str_blank + '.info', 'w', encoding='utf-8') as f:
         f.write(str(str_info))
 
-    util.ntfy(
-        title=util.lat_esc(f'[ONLINE] {str_user}'),
-        message=util.lat_esc(str_title),
-        topic=args.ntfy,
-        str_json=str_json,
-    )
+    apobj.notify(title=f'[ONLINE] {str_user}', body=str_title)
 
-    log.success(f'[online] ({str_user} - {str_title})')
+    log.success(f'[ONLINE] ({str_user} - {str_title})')
 
     c = _c_streamlink.copy()
     c += util.http_cookies(args.cookies)
@@ -231,13 +225,9 @@ def dump_stream(str_dict):
             os.kill(str_proc.pid, signal.SIGTERM)
         else:
             os.waitpid(str_proc.pid, 0)
-            util.ntfy(
-                title=util.lat_esc(f'[offline] {str_user} ({end_time})'),
-                message=util.lat_esc(str_title),
-                topic=args.ntfy,
-            )
+            apobj.notify(title=f'[offline] {str_user} ({end_time})', body=str_title)
 
-        log.info(f'[offline] ({str_user} - {str_title}) ({end_time})')
+        log.info(f'[offline] ({str_user} - {str_title}) ')
 
     # manual merging
     if args.yta and 'youtube' in str_json['extractor']:
@@ -349,18 +339,20 @@ def dump_list(files):
 
 
 if __name__ == '__main__':
-    ap = argparse.ArgumentParser()
-    add = ap.add_argument
+    apobj = apprise.Apprise()
+
+    arg = argparse.ArgumentParser()
+    add = arg.add_argument
     evg = os.environ.get
 
     # fmt: off
     add('-o', '--output', type=Path, default=Path(evg("YK_OUTPUT", '.')),   help='stream output folder')
     add('-l', '--log',    type=Path, default=Path(evg("YK_LOG_PATH", '.')), help='log output folder')
     add('-d', '--delay',  type=int,  default=int(evg("YK_DELAY", 15)),      help='streams check delay')
-    add('-n', '--ntfy',   type=str,  default=str(evg("YK_NTFY", '')),       help='ntfy.sh channel')
 
     add('-s', '--src',     nargs='+', default=[], help='files with channels/streams (list1.txt, /root/list2.txt)')
     add('-p', '--proxy',   nargs='+', default=[], help='proxies (socks5://user:pass@127.0.0.1:1080)')
+    add('-a', '--apprise', nargs='+', default=[], help='apprise configs (.yml)')
     add('-c', '--cookies', type=Path, default=Path(evg("YK_COOKIES", '')), help='path to cookies.txt (netscape format)')
 
     add('--dlp',           action='store_true', help='use yt-dlp instead of streamlink')
@@ -368,7 +360,7 @@ if __name__ == '__main__':
     add('-v', '--verbose', action='store_true', help='verbose output (traces)')
     # fmt: on
 
-    args = ap.parse_args()
+    args = arg.parse_args()
 
     args.log.mkdir(parents=True, exist_ok=True)
     log_path = args.log / util.dt_now('%Y-%m-%d.log')
@@ -383,7 +375,6 @@ if __name__ == '__main__':
         ('YK_OUTPUT', args.output),
         ('YK_LOG_PATH', args.log),
         ('YK_DELAY', args.delay),
-        ('YK_NTFY', args.ntfy),
         ('YK_COOKIES', args.cookies),
     ]:
         log.trace(f'{var}: {target}')
@@ -394,6 +385,7 @@ if __name__ == '__main__':
         ('YK_ARGS_YTARCHIVE', _c_ytarchive),
         ('YK_SRC_LISTS', args.src),
         ('YK_PROXIES', args.proxy),
+        ('YK_APPRISE', args.apprise),
     ]:
         env = evg(var, '')
         if env:
@@ -402,6 +394,11 @@ if __name__ == '__main__':
 
     if not dump_list(args.src):
         util.die('no channels in files')
+
+    appcfg = apprise.AppriseConfig()
+    for conf in args.apprise:
+        appcfg.add(conf)
+    apobj.add(appcfg)
 
     args.output.mkdir(parents=True, exist_ok=True)
 

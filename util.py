@@ -7,7 +7,6 @@ import sys
 import re
 import requests
 import unicodedata
-import ntfy_lite
 
 hq_blank = 'https://i.ytimg.com/vi/%s/hqdefault.jpg'
 max_blank = 'https://i.ytimg.com/vi/%s/maxresdefault.jpg'
@@ -27,42 +26,6 @@ yta_q = [
     '2160p60',
     'best',
 ]
-
-lat_esc = lambda t: t.encode('latin-1', errors='replace').decode(encoding='latin-1')
-
-
-def ntfy(
-    title: str,
-    message: str = '',
-    topic: str = '',
-    str_json: dict = {},
-):
-    if not topic:
-        return
-
-    actions = []
-
-    if 'uploader_url' in str_json:
-        actions.append(
-            ntfy_lite.ViewAction(
-                label='user', url=str_json['uploader_url'], clear=False
-            )
-        )
-
-    if 'webpage_url' in str_json:
-        actions.append(
-            ntfy_lite.ViewAction(
-                label='stream', url=str_json['webpage_url'], clear=False
-            )
-        )
-
-    ntfy_lite.push(
-        topic,
-        title,
-        priority=ntfy_lite.Priority.DEFAULT,
-        message=message,
-        actions=actions,
-    )
 
 
 def str_cut(string: str, letters: int, postfix: str = '...'):

@@ -11,7 +11,7 @@ services:
       # YK_PROXIES: socks5://127.0.0.1:1080
       YK_LOG_PATH: /tmp/log
       YK_DELAY: 300 # big delay for yt
-      YK_NTFY: test_channel
+      # YK_APPRISE: apprise.yml
       YK_SRC_LISTS: /tmp/list-yt.txt
     build:
       context: https://github.com/ntrrpt/yakayaka.git
