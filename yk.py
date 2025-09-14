@@ -415,6 +415,10 @@ if __name__ == '__main__':
                 break
 
             for ch in channels:
+                if dump_list(args.src) != channels:
+                    log.info('list updated!')
+                    break
+
                 if ch['url'] not in threads and check_live(ch['url']):
                     T = threading.Thread(target=dump_stream, args=(ch,))
                     T.start()
