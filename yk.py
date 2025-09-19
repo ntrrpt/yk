@@ -354,7 +354,9 @@ def dump_list(files):
                     if all(g):
                         log.critical(f'{quality!r} not supported in ytarchive')
                         log.info(f'choose something from {", ".join(util.yta_q)!r}')
-                        sys.exit(1)
+
+                        if not threads:
+                            sys.exit(1)
 
                 if len(split) > 2:
                     regex = split[2]
