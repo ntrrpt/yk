@@ -18,6 +18,7 @@ from loguru import logger as log
 import psutil
 import yt_dlp
 import apprise
+import requests
 
 import util
 
@@ -72,11 +73,13 @@ _c_ytarchive = [
 def dump_stream(str_dict):
     start_time = time.time()
 
+    str_proxy = random.choice(args.proxy) if args.proxy else None
+
+    if str_proxy:
+        ytdlp_config['proxy'] = str_proxy
+
     if args.cookies.is_file():
         ytdlp_config['cookiefile'] = args.cookies
-
-    if args.proxy:
-        ytdlp_config['proxy'] = random.choice(args.proxy)
 
     with yt_dlp.YoutubeDL(ytdlp_config) as y:
         str_json = y.extract_info(str_dict['url'], download=False)
@@ -123,7 +126,7 @@ def dump_stream(str_dict):
         util.yt_dump_thumb(
             path=str_blank + '.jpg',
             video_id=str_json['id'],
-            proxy=random.choice(args.proxy) if args.proxy else None,
+            proxy=str_proxy,
         )
 
     # saving stream info
@@ -143,8 +146,8 @@ def dump_stream(str_dict):
         '--default-stream', str_dict['quality']
     ]  # fmt: skip
 
-    if args.proxy:
-        c += ['--http-proxy', random.choice(args.proxy)]
+    if str_proxy:
+        c += ['--http-proxy', str_proxy]
 
     if args.dlp:
         c = _c_ytdlp.copy()
@@ -153,9 +156,9 @@ def dump_stream(str_dict):
         if 'youtube' in str_json['extractor']:
             c.insert(1, '--live-from-start')
 
-        if args.proxy:
+        if str_proxy:
             c.insert(1, '--proxy')
-            c.insert(2, random.choice(args.proxy))
+            c.insert(2, str_proxy)
 
         if args.cookies.is_file():
             c.insert(1, '--cookies')
@@ -169,13 +172,40 @@ def dump_stream(str_dict):
             str_dict['quality'],
         ]  # fmt: skip
 
-        if args.proxy:
+        if str_proxy:
             c.insert(1, '--proxy')
-            c.insert(2, random.choice(args.proxy))
+            c.insert(2, str_proxy)
 
         if args.cookies.is_file():
             c.insert(1, '--cookies')
             c.insert(2, str(args.cookies))
+
+        try:
+            r = requests.get(args.bgutil + '/ping', timeout=10)
+            r.raise_for_status()
+
+            bg = r.json()
+            if any([not 'server_uptime' in bg, not 'version' in bg]):
+                raise Exception(f'invalid /ping: {bg}')
+
+            r = requests.post(
+                args.bgutil + '/get_pot',
+                data={'proxy': str_proxy} if str_proxy else {},
+                timeout=60,
+            )
+            r.raise_for_status()
+
+            bg = r.json()
+            if not 'poToken' in bg:
+                raise Exception(f'invalid /get_pot: {bg}')
+
+            log.trace(f'potoken: {bg["poToken"]}')
+
+            c.insert(1, '--potoken')
+            c.insert(2, bg['poToken'])
+
+        except Exception as ex:
+            log.warning(f'bgutil | {str(ex)}')
 
     c_chat = [
         'chat_downloader', 
@@ -188,21 +218,21 @@ def dump_stream(str_dict):
         c_chat.insert(1, '--cookies')
         c_chat.insert(2, str(args.cookies))
 
-    if args.proxy:
+    if str_proxy:
         c_chat.insert(1, '--proxy')
-        c_chat.insert(2, random.choice(args.proxy))
+        c_chat.insert(2, str_proxy)
 
     log.trace(' '.join(c))
     log.trace(' '.join(c_chat))
 
     # str process
     str_txt = open(str_blank + '.log', 'a')
-    str_proc = subprocess.Popen(c, stdout=str_txt, stderr=str_txt)
+    str_proc = subprocess.Popen(c, stdout=str_txt, stderr=str_txt, cwd=str_dir)
     str_pid = psutil.Process(str_proc.pid)
 
     # chat process
     chat_txt = open(str_blank + '.chat', 'w')
-    chat_proc = subprocess.Popen(c_chat, stdout=chat_txt, stderr=chat_txt)
+    chat_proc = subprocess.Popen(c_chat, stdout=chat_txt, stderr=chat_txt, cwd=str_dir)
     chat_pid = psutil.Process(chat_proc.pid)
 
     threads.append(str_dict['url'])
@@ -231,7 +261,7 @@ def dump_stream(str_dict):
 
     # manual merging
     if args.yta and 'youtube' in str_json['extractor']:
-        c_merge = 'echo =C'
+        c_merge = '=C'
         files_to_delete = []
 
         for file in os.listdir(str_dir):
@@ -322,8 +352,8 @@ def dump_list(files):
                     ]
 
                     if all(g):
-                        log.critical(f"'{quality}' not supported in ytarchive")
-                        log.info(f"choose something from '{', '.join(util.yta_q)}'")
+                        log.critical(f'{quality!r} not supported in ytarchive')
+                        log.info(f'choose something from {", ".join(util.yta_q)!r}')
                         sys.exit(1)
 
                 if len(split) > 2:
@@ -353,7 +383,9 @@ if __name__ == '__main__':
     add('-s', '--src',     nargs='+', default=[], help='files with channels/streams (list1.txt, /root/list2.txt)')
     add('-p', '--proxy',   nargs='+', default=[], help='proxies (socks5://user:pass@127.0.0.1:1080)')
     add('-a', '--apprise', nargs='+', default=[], help='apprise configs (.yml)')
-    add('-c', '--cookies', type=Path, default=Path(evg("YK_COOKIES", '')), help='path to cookies.txt (netscape format)')
+
+    add('-c', '--cookies', type=Path, default=Path(evg("YK_COOKIES", '')),                    help='path to cookies.txt (netscape format)')
+    add('-b', '--bgutil',  type=str,  default=str(evg("YK_BGUTIL", 'http://127.0.0.1:4416')), help='bgutil-ytdlp-pot-provider url')
 
     add('--dlp',           action='store_true', help='use yt-dlp instead of streamlink')
     add('--yta',           action='store_true', help='use ytarchive for youtube streams')
@@ -376,6 +408,7 @@ if __name__ == '__main__':
         ('YK_LOG_PATH', args.log),
         ('YK_DELAY', args.delay),
         ('YK_COOKIES', args.cookies),
+        ('YK_BGUTIL', args.bgutil),
     ]:
         log.trace(f'{var}: {target}')
 
