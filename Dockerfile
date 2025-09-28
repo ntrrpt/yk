@@ -12,9 +12,11 @@ RUN apk add --no-cache --progress shadow go git ffmpeg build-base linux-headers
 RUN git clone https://github.com/Kethsar/ytarchive.git /tmp/ytarchive
 RUN go build -C /tmp/ytarchive -o /usr/local/bin/ytarchive -v
 
+RUN mkdir -p /.cache && chmod 777 /.cache
+RUN mkdir -p /app && chmod 777 /app
+
 WORKDIR /app
 COPY . /app
-RUN mkdir -p /.cache && chmod 777 /.cache
 
 RUN if [ "${FORCE_UV_SYNC_ON_START}" != "YES" ]; then \
         uv sync; \
