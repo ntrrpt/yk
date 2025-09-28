@@ -6,25 +6,23 @@ services:
     network_mode: host
     tty: true
     stdin_open: true
+    user: "1000"
 
     environment:
       # YK_PROXIES: socks5://127.0.0.1:1080
-      YK_LOG_PATH: /tmp/log
+      YK_LOG_PATH: /out
       YK_DELAY: 300 # big delay for yt
       # YK_APPRISE: apprise.yml
       YK_SRC_LISTS: /tmp/list-yt.txt
     build:
       context: https://github.com/ntrrpt/yk.git
       args:
-        PGID: 1000
-        PUID: 1000
         # update yt-dlp/deps on every container start
         # (because google likes to break things)
         FORCE_UV_SYNC_ON_START: YES
     volumes:
       - ./:/out
       - ./list-yt.txt:/tmp/list-yt.txt
-      - ./:/tmp/log
 
       # po token extractor plugin 
       # - ./bgutil-ytdlp-pot-provider.zip:/etc/yt-dlp/plugins/bgutil-ytdlp-pot-provider.zip
@@ -38,22 +36,20 @@ services:
     network_mode: host
     tty: true
     stdin_open: true
-    
+    user: "1000"
+
     environment:
-      YK_LOG_PATH: /tmp/log
+      YK_LOG_PATH: /out
       YK_DELAY: 15
       YK_SRC_LISTS: /tmp/list-tw.txt
     build:
       context: https://github.com/ntrrpt/yk.git
       args:
-        PGID: 1000
-        PUID: 1000
         # (and twitch sometimes too)
         FORCE_UV_SYNC_ON_START: YES
     volumes:
       - ./:/out
       - ./list-tw.txt:/tmp/list-tw.txt
-      - ./:/tmp/log
 
     command: []
 
