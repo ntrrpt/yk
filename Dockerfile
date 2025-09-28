@@ -15,6 +15,7 @@ RUN go build -C /tmp/ytarchive -o /usr/local/bin/ytarchive -v
 
 WORKDIR /app
 COPY . /app
+RUN chmod -R 777 /app
 
 RUN if [ "${FORCE_UV_SYNC_ON_START}" != "YES" ]; then \
         uv sync; \
