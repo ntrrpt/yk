@@ -113,10 +113,10 @@ def remove_all_exact(path, target):
     path = Path(path)
     old_stat = path.stat()
 
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, 'r+', encoding='utf-8') as f:
         lines = f.readlines()
-
-    with open(path, 'w', encoding='utf-8') as f:
+        f.seek(0)
+        f.truncate(0)
         for line in lines:
             if line.rstrip('\n') != target:
                 f.write(line)
