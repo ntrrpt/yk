@@ -457,15 +457,15 @@ if __name__ == '__main__':
                     log.info('list updated!')
                     break
 
-                if ch['regex'] == 'DEL':
-                    con = ' '.join((ch['url'], ch['quality'], ch['regex']))
-                    for src in args.src:
-                        util.remove_all_exact(src, con)
-                        
-                    log.info(f'removed {con!r}')
-                    ch['regex'] = ''
-
                 if ch['url'] not in threads and check_live(ch['url']):
+                    if ch['regex'] == 'DEL':
+                        con = ' '.join((ch['url'], ch['quality'], ch['regex']))
+                        for src in args.src:
+                            util.remove_all_exact(src, con)
+                            
+                        log.info(f'removed {con!r}')
+                        ch['regex'] = ''
+
                     T = threading.Thread(target=dump_stream, args=(ch,))
                     T.start()
 
