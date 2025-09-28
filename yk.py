@@ -457,15 +457,17 @@ if __name__ == '__main__':
                     log.info('list updated!')
                     break
 
-                if ch['url'] not in threads and check_live(ch['url']):
-                    T = threading.Thread(target=dump_stream, args=(ch,))
-                    T.start()
-
                 if ch['regex'] == 'DEL':
                     con = ' '.join((ch['url'], ch['quality'], ch['regex']))
                     for src in args.src:
                         util.remove_all_exact(src, con)
+                        
                     log.info(f'removed {con!r}')
+                    ch['regex'] = ''
+
+                if ch['url'] not in threads and check_live(ch['url']):
+                    T = threading.Thread(target=dump_stream, args=(ch,))
+                    T.start()
 
                 s = '%s / %s | %s is streaming.'
                 log.trace(s % (channels.index(ch) + 1, len(channels), len(threads)))
