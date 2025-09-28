@@ -185,7 +185,7 @@ def dump_stream(str_dict):
             r.raise_for_status()
 
             bg = r.json()
-            if any([not 'server_uptime' in bg, not 'version' in bg]):
+            if any(['server_uptime' not in bg, 'version' not in bg]):
                 raise Exception(f'invalid /ping: {bg}')
 
             r = requests.post(
@@ -196,7 +196,7 @@ def dump_stream(str_dict):
             r.raise_for_status()
 
             bg = r.json()
-            if not 'poToken' in bg:
+            if 'poToken' not in bg:
                 raise Exception(f'invalid /get_pot: {bg}')
 
             log.trace(f'potoken: {bg["poToken"]}')
@@ -322,11 +322,12 @@ def check_live(url):
                 return p == 0
 
 
-def dump_list(files):
-    r = []
+def get_channels(files):
+    channels = []
 
     for file in files:
-        if not Path(file).is_file():
+        fp = Path(file)
+        if not fp.is_file():
             log.error(f'{file} not exists')
             continue
 
@@ -364,10 +365,11 @@ def dump_list(files):
                 if 'youtube' in url and 'watch?v=' not in url:
                     url += '/live'
 
-                r.append({'url': url, 'regex': regex, 'quality': quality})
+                ch = {'url': url, 'regex': regex, 'quality': quality}
+                if ch not in channels:
+                    channels.append(ch)
 
-    # remove dubs
-    return list({json.dumps(d, sort_keys=True): d for d in r}.values())
+    return channels
 
 
 if __name__ == '__main__':
@@ -427,7 +429,7 @@ if __name__ == '__main__':
             target += env.split()
         log.trace(f'{var}: {target}')
 
-    if not dump_list(args.src):
+    if not get_channels(args.src):
         util.die('no channels in files')
 
     appcfg = apprise.AppriseConfig()
@@ -443,14 +445,15 @@ if __name__ == '__main__':
 
     try:
         while True:
-            channels = dump_list(args.src)
+            channels = get_channels(args.src)
+            mtimes = util.sum_mtime(args.src)
 
             if not channels:
                 log.error('no channels for monitoring')
                 break
 
             for ch in channels:
-                if dump_list(args.src) != channels:
+                if util.sum_mtime(args.src) != mtimes:
                     log.info('list updated!')
                     break
 
@@ -458,10 +461,20 @@ if __name__ == '__main__':
                     T = threading.Thread(target=dump_stream, args=(ch,))
                     T.start()
 
+                if ch['regex'] == 'DEL':
+                    con = ' '.join((ch['url'], ch['quality'], ch['regex']))
+                    for src in args.src:
+                        util.remove_all_exact(src, con)
+                    log.info(f'removed {con!r}')
+
                 s = '%s / %s | %s is streaming.'
                 log.trace(s % (channels.index(ch) + 1, len(channels), len(threads)))
 
-                time.sleep(args.delay)
+                for i in range(args.delay):
+                    if util.sum_mtime(args.src) != mtimes:
+                        break
+
+                    time.sleep(1)
 
     except KeyboardInterrupt:
         if threads:

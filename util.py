@@ -5,6 +5,7 @@ import pprint
 from pathlib import Path
 import sys
 import re
+import os
 import requests
 import unicodedata
 
@@ -26,6 +27,10 @@ yta_q = [
     '2160p60',
     'best',
 ]
+
+
+def sum_mtime(files):
+    return sum(Path(f).stat().st_mtime for f in files)
 
 
 def str_cut(string: str, letters: int, postfix: str = '...'):
@@ -91,8 +96,7 @@ def pw(path: Path | str, data: str, end: str = '\n'):
 
 
 def pp(data: str):
-    s = pprint.pformat(str(data))
-    print(s)
+    print(pprint.pformat(str(data)))
 
 
 def pf(data: str):
@@ -103,6 +107,21 @@ def die(s: str = ''):
     if s:
         log.critical(str(s))
     sys.exit(1)
+
+
+def remove_all_exact(path, target):
+    path = Path(path)
+    old_stat = path.stat()
+
+    with open(path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+
+    with open(path, 'w', encoding='utf-8') as f:
+        for line in lines:
+            if line.rstrip('\n') != target:
+                f.write(line)
+
+    os.utime(path, (old_stat.st_atime, old_stat.st_mtime))
 
 
 def yt_dump_thumb(path: Path | str, video_id: str, proxy: str | None = None):
