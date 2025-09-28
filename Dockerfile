@@ -1,7 +1,6 @@
 FROM ghcr.io/astral-sh/uv:python3.13-alpine
 
 ARG FORCE_UV_SYNC_ON_START=NAH
-ENV UV_CACHE_DIR=/app/uv-cache
 ENV UV_NO_PROGRESS=1
 ENV UV_COMPILE_BYTECODE=1
 ENV NO_COLOR=1
@@ -15,7 +14,7 @@ RUN go build -C /tmp/ytarchive -o /usr/local/bin/ytarchive -v
 
 WORKDIR /app
 COPY . /app
-RUN chmod -R 777 /app
+RUN mkdir -p /.cache && chmod 777 /.cache
 
 RUN if [ "${FORCE_UV_SYNC_ON_START}" != "YES" ]; then \
         uv sync; \
