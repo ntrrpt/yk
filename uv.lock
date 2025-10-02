@@ -387,6 +387,15 @@ wheels = [
 ]
 
 [[package]]
+name = "stopwatch-py"
+version = "2.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/14/1815e24c29c2f2ea1e8cb17ae72357c1151af02b9137b29ccab973ec7f73/stopwatch.py-2.0.1.tar.gz", hash = "sha256:8cc94ba0f6469d434eabd8b227166e595fd42350e7f66dbf1a1a80697f60cc79", size = 2796, upload-time = "2022-09-04T17:15:43.861Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7a/65/16e128bfa30b4d63362c5ead733bc5a95c2b4241a0a193dc44e290ab2080/stopwatch.py-2.0.1-py3-none-any.whl", hash = "sha256:5802a0178d766120c11dd5df8ae838e9beccb8c88329dbd5f0f7ac4b7fed9107", size = 3601, upload-time = "2022-09-04T17:15:37.542Z" },
+]
+
+[[package]]
 name = "streamlink"
 version = "7.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -500,6 +509,7 @@ dependencies = [
     { name = "prettytable" },
     { name = "psutil" },
     { name = "requests" },
+    { name = "stopwatch-py" },
     { name = "streamlink" },
     { name = "yt-dlp" },
 ]
@@ -517,6 +527,7 @@ requires-dist = [
     { name = "prettytable", specifier = ">=3.15.1" },
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "requests", specifier = ">=2.32.3" },
+    { name = "stopwatch-py", specifier = ">=2.0.1" },
     { name = "streamlink", specifier = ">=7.6.0" },
     { name = "yt-dlp", specifier = ">=2025.9.5" },
 ]

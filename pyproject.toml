@@ -12,6 +12,7 @@ dependencies = [
     "prettytable>=3.15.1",
     "psutil>=7.0.0",
     "requests>=2.32.3",
+    "stopwatch-py>=2.0.1",
     "streamlink>=7.6.0",
     "yt-dlp>=2025.9.5",
 ]
