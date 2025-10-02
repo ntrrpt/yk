@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-import json
-import util
-import os
 import datetime
+import json
+import os
 import sys
+
 from prettytable import PrettyTable
+
+import util
 
 fields = ['Badges', 'Username', 'Link to channel (id)']
 progress = False

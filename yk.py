@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
-from pathlib import Path
+import argparse
+import datetime
 import json
+import os
+import random
+import re
 import shlex
+import signal
+import subprocess
+import sys
 import threading
 import time
-import os
-import sys
-import datetime
-import subprocess
-import signal
-import re
-import jc
-import argparse
-import random
+from pathlib import Path
 
-from loguru import logger as log
-import psutil
-import yt_dlp
 import apprise
+import psutil
 import requests
+import yt_dlp
+from loguru import logger as log
 
+import jc
 import util
 
 threads = []
