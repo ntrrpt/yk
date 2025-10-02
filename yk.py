@@ -18,6 +18,7 @@ import psutil
 import requests
 import yt_dlp
 from loguru import logger as log
+from stopwatch import Stopwatch
 
 import jc
 import util
@@ -71,7 +72,7 @@ _c_ytarchive = [
 
 
 def dump_stream(str_dict):
-    start_time = time.time()
+    global unload
 
     str_proxy = random.choice(args.proxy) if args.proxy else None
 
@@ -80,6 +81,9 @@ def dump_stream(str_dict):
 
     if args.cookies.is_file():
         ytdlp_config['cookiefile'] = args.cookies
+
+    if 'youtube' in str_dict['url'] and 'watch?v=' not in str_dict['url']:
+        str_dict['url'] += '/live'
 
     with yt_dlp.YoutubeDL(ytdlp_config) as y:
         str_json = y.extract_info(str_dict['url'], download=False)
@@ -237,6 +241,9 @@ def dump_stream(str_dict):
 
     threads.append(str_dict['url'])
 
+    sw = Stopwatch(2)
+    sw.restart()
+
     while not unload:
         time.sleep(1)
 
@@ -246,7 +253,7 @@ def dump_stream(str_dict):
         if str_pid.status() == psutil.STATUS_ZOMBIE:
             break
 
-    end_time = datetime.timedelta(seconds=int(f'{time.time() - start_time:.{0}f}'))
+    total_time = datetime.timedelta(seconds=int(sw.duration))
 
     threads.remove(str_dict['url'])
 
@@ -255,7 +262,7 @@ def dump_stream(str_dict):
             os.kill(str_proc.pid, signal.SIGTERM)
         else:
             os.waitpid(str_proc.pid, 0)
-            apobj.notify(title=f'[offline] {str_user} ({end_time})', body=str_title)
+            apobj.notify(title=f'[offline] {str_user} ({total_time})', body=str_title)
 
         log.info(f'[offline] ({str_user} - {str_title}) ')
 
@@ -308,6 +315,9 @@ def dump_stream(str_dict):
 
 
 def check_live(url):
+    if 'youtube' in url and 'watch?v=' not in url:
+        url += '/live'
+
     c = ['streamlink', '--twitch-disable-hosting', '--url', url]
     c += util.http_cookies(args.cookies)
 
@@ -342,6 +352,7 @@ def get_channels(files):
                 url = split[0]
                 regex = ''
                 quality = 'best'
+                delete = False
 
                 if len(split) > 1:
                     quality = split[1]
@@ -362,14 +373,59 @@ def get_channels(files):
                 if len(split) > 2:
                     regex = split[2]
 
-                if 'youtube' in url and 'watch?v=' not in url:
-                    url += '/live'
+                if url.startswith('@'):
+                    url = url.removeprefix('@')
+                    delete = True
 
-                ch = {'url': url, 'regex': regex, 'quality': quality}
+                ch = {'url': url, 'regex': regex, 'quality': quality, 'delete': delete}
                 if ch not in channels:
                     channels.append(ch)
 
     return channels
+
+
+def main_loop():
+    global unload
+
+    try:
+        while True:
+            channels = get_channels(args.src)
+            mtimes = util.sum_mtime(args.src)
+
+            if not channels:
+                log.error('no channels for monitoring')
+                break
+
+            for ch in channels:
+                if util.sum_mtime(args.src) != mtimes:
+                    log.info('list updated!')
+                    break
+
+                if ch['url'] not in threads and check_live(ch['url']):
+                    if ch['delete']:
+                        for src in args.src:
+                            util.remove_all_exact(src, ch['url'])
+
+                        log.info(f'removed {ch["url"]!r}')
+
+                    T = threading.Thread(target=dump_stream, args=(ch,))
+                    T.start()
+
+                s = '%s / %s | %s is streaming.'
+                log.trace(s % (channels.index(ch) + 1, len(channels), len(threads)))
+
+                for i in range(args.delay):
+                    if util.sum_mtime(args.src) != mtimes:
+                        break
+
+                    time.sleep(1)
+
+    except KeyboardInterrupt:
+        if threads:
+            unload = True
+            log.warning('Stopping...')
+            while threading.active_count() > 1:
+                time.sleep(1)
 
 
 if __name__ == '__main__':
@@ -397,6 +453,7 @@ if __name__ == '__main__':
     # fmt: on
 
     args = arg.parse_args()
+    args.output = args.output.resolve()  # subprocess pwd fix
 
     args.log.mkdir(parents=True, exist_ok=True)
     log_path = args.log / util.dt_now('%Y-%m-%d.log')
@@ -443,50 +500,4 @@ if __name__ == '__main__':
     pwdir = Path(__file__).resolve().parent
     os.environ['PATH'] = os.pathsep.join([str(pwdir), os.environ['PATH']])
 
-    try:
-        while True:
-            channels = get_channels(args.src)
-            mtimes = util.sum_mtime(args.src)
-
-            if not channels:
-                log.error('no channels for monitoring')
-                break
-
-            for ch in channels:
-                if util.sum_mtime(args.src) != mtimes:
-                    log.info('list updated!')
-                    break
-
-                if ch['url'] not in threads and check_live(ch['url']):
-                    if ch['regex'] == 'DEL':
-                        con = ' '.join(
-                            [
-                                ch['url'].removesuffix('/live'),
-                                ch['quality'],
-                                ch['regex'],
-                            ]
-                        )
-                        for src in args.src:
-                            util.remove_all_exact(src, con)
-
-                        log.info(f'removed {con!r}')
-                        ch['regex'] = ''
-
-                    T = threading.Thread(target=dump_stream, args=(ch,))
-                    T.start()
-
-                s = '%s / %s | %s is streaming.'
-                log.trace(s % (channels.index(ch) + 1, len(channels), len(threads)))
-
-                for i in range(args.delay):
-                    if util.sum_mtime(args.src) != mtimes:
-                        break
-
-                    time.sleep(1)
-
-    except KeyboardInterrupt:
-        if threads:
-            unload = True
-            log.warning('Stopping...')
-            while threading.active_count() > 1:
-                time.sleep(1)
+    main_loop()

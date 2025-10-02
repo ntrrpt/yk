@@ -1,13 +1,14 @@
-from loguru import logger as log
-from http.cookiejar import MozillaCookieJar
-from datetime import datetime
-import pprint
-from pathlib import Path
-import sys
-import re
 import os
-import requests
+import pprint
+import re
+import sys
 import unicodedata
+from datetime import datetime
+from http.cookiejar import MozillaCookieJar
+from pathlib import Path
+
+import requests
+from loguru import logger as log
 
 hq_blank = 'https://i.ytimg.com/vi/%s/hqdefault.jpg'
 max_blank = 'https://i.ytimg.com/vi/%s/maxresdefault.jpg'
@@ -111,17 +112,17 @@ def die(s: str = ''):
 
 def remove_all_exact(path, target):
     path = Path(path)
-    old_stat = path.stat()
+    fst = path.stat()
 
     with open(path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
 
     with open(path, 'w', encoding='utf-8') as f:
         for line in lines:
-            if line.rstrip('\n') != target:
+            if target not in line.rstrip('\n') or line.startswith('#'):
                 f.write(line)
 
-    os.utime(path, (old_stat.st_atime, old_stat.st_mtime))
+    os.utime(path, (fst.st_atime, fst.st_mtime))
 
 
 def yt_dump_thumb(path: Path | str, video_id: str, proxy: str | None = None):
