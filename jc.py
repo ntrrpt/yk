@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-import datetime
 import json
 import os
 import sys
+from datetime import timedelta
 
-from prettytable import PrettyTable
+from tabulate import tabulate
 
 import util
 
-fields = ['Badges', 'Username', 'Link to channel (id)']
 progress = False
 
 
@@ -17,140 +16,165 @@ def log(string, end='\n'):
         print(string, end=end)
 
 
+def timedelta_pretty(td: timedelta, pad: bool = True) -> str:
+    total_ms = int(td.total_seconds() * 1000)
+    days, rem = divmod(total_ms, 24 * 3600 * 1000)
+    hours, rem = divmod(rem, 3600 * 1000)
+    minutes, rem = divmod(rem, 60 * 1000)
+    seconds, ms = divmod(rem, 1000)
+
+    ms_digit = ms // 100
+
+    if pad:
+        if days:
+            return f'{days}|{hours:02}:{minutes:02}:{seconds:02}.{ms_digit}'
+        return f'{hours:02}:{minutes:02}:{seconds:02}.{ms_digit}'
+    else:
+        if days:
+            return f'{days}|{hours:02}:{minutes}:{seconds}.{ms_digit}'
+        return f'{hours:02}:{minutes}:{seconds}.{ms_digit}'
+
+
 def conv(filepath):
-    def dict_append(timestamp, username, id, message, badge):
-        history[len(history)] = {
-            'timestamp': timestamp,
-            'username': username,
-            'message': message,
-            'badge': badge,
-        }
-
-        for i in range(len(users)):
-            if users[i]['id'] == id:
-                return
-
-        users[len(users)] = {'username': username, 'id': id, 'badge': badge}
+    ##################################################################
+    #  init
 
     SITE = ''
     LINK = ''
+    CHAT = ''
+    USERS = []
+    URLS = []
+    MESSAGES = []
 
-    chat = ''
-    users = {}
-    history = {}
-    users_table = PrettyTable()
-    users_table.field_names = fields
-    filename = os.path.splitext(filepath)[0] + '.conv'
+    fn = os.path.splitext(filepath)[0] + '.conv'
 
     with open(filepath, 'r', encoding='utf-8') as file:
-        chat = json.load(file)
+        CHAT = json.load(file)
 
-    util.delete(filename)
+    util.delete(fn)
 
-    # type of stream (youtube / twitch)
+    ##################################################################
+    #  type of stream (youtube / twitch)
+
     types = []
-    for i, msg in enumerate(chat, start=1):
-        log('[finding] messages: %s/%s' % (len(chat), i), end='\r')
+    for msg in CHAT:
         types.append(msg['action_type'])
-    log('')  # newline
 
     types = list(set(types))
 
     if len(types) > 1:
-        m = '%s: new types: %s' % (filename, types)
-        util.append(filename, m)
+        m = f'{fn}: new types: {types}'
+        util.append(fn, m)
         log(m)
     if 'text_message' in types:
-        SITE = 'twitch'
+        SITE = 'tw'
         LINK = 'https://www.twitch.tv/'
     if 'add_chat_item' in types:
-        SITE = 'youtube'
+        SITE = 'yt'
         LINK = 'https://www.youtube.com/channel/'
     if not SITE:
-        m = '%s: yt/tw not found in json' % filename
-        util.append(filename, m)
+        m = f'{fn}: yt/tw not found in json'
+        util.append(fn, m)
         log(m)
         return
 
-    # adding messages to dict
-    for i, msg in enumerate(chat, start=1):
+    ##################################################################
+    #  adding messages and users
+
+    delay_time = 0
+    all_time = 0
+
+    for i, msg in enumerate(CHAT, start=1):
         if 'message' not in msg:
-            log('%s: no message       ' % i)
+            log(f'{i}: no message ')
             continue
 
         log(
-            '[sorting] messages: %s/%s, users: %s' % (len(chat), i, len(users)),
+            f'messages: {len(CHAT)}/{i}, users: {len(USERS)}',
             end='\r',
         )
 
         # badges (moderator, subscriber, etc.)
+        icon = ''
         badges = ''
         if 'badges' in msg['author']:
             for b, badge in enumerate(msg['author']['badges']):
                 badges += (', ' if b > 0 else '') + badge['title']
 
-        match SITE:
-            case 'youtube':
-                dict_append(
-                    msg['timestamp'],
-                    util.str_cut(msg['author']['name'], 20),
-                    msg['author']['id'],
-                    msg['message'],
-                    badges,
-                )
+        # idk how handle locales
+        if 'Verified' in badges or 'Подтверждено' in badges:
+            icon = '✔'
+        if 'Moderator' in badges or 'Модератор' in badges:
+            icon = 'M'
+        if 'Owner' in badges or 'Владелец' in badges:
+            icon = 'O'
 
-            case 'twitch':
-                dict_append(
-                    msg['timestamp'],
-                    util.str_cut(msg['author']['display_name'], 20),
-                    msg['author']['name'],
-                    msg['message'],
-                    badges,
-                )
-    log('')
-
-    # adding users to prettytable
-    for i in range(len(users)):
-        users_table.add_row(
-            [users[i]['badge'], users[i]['username'], LINK + users[i]['id']]
+        username = (
+            msg['author']['name'] if SITE == 'yt' else msg['author']['display_name']
         )
 
-    # writing msg count and table
-    util.append(filename, 'messages: %s, users: %s' % (len(chat), len(users)))
-    util.append(filename, users_table.get_string(sortby='Badges', reversesort=True))
-
-    # writing messages
-    delay_time = 0
-    all_time = 0
-
-    for i in range(len(history)):
-        log('[writing] messages: %s/%s' % (len(chat), i + 1), end='\r')
-
-        username = history[i]['username']
-        badge = history[i]['badge']
-        timestamp = history[i]['timestamp']
-
-        icon = '  |  '
-        if badge:
-            # username += f' ({badge})'
-            if 'Moderator' in badge:
-                icon = ' [M] '
-            if 'Owner' in badge:
-                icon = ' [O] '
+        # https://github.com/astanin/python-tabulate/issues/189
+        if username in ('True', 'False'):
+            username = f'__{username}__'
+        if msg['message'] in ('True', 'False'):
+            msg['message'] = f'__{msg["message"]}__'
 
         if not delay_time:
-            delay_time = timestamp
+            delay_time = msg['timestamp']
 
-        delta = timestamp - delay_time
+        delta = msg['timestamp'] - delay_time
         all_time += delta
-        delay_time = timestamp
+        delay_time = msg['timestamp']
 
-        timestr = str(
-            datetime.timedelta(microseconds=int(all_time))
-        )  # datetime.datetime.fromtimestamp(history[i]['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-        util.append(
-            filename, f'{timestr[:-5]}{icon}{username}: {history[i]["message"]}'
+        timestr = timedelta_pretty(timedelta(microseconds=int(all_time)))
+        # datetime.datetime.fromtimestamp(history[i]['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+
+        MESSAGES.append(
+            [
+                timestr,
+                icon,
+                str(username) or '__NULL__',
+                str(msg['message']) or '__NULL__',
+            ]
         )
+
+        url = LINK + (msg['author']['id'] if SITE == 'yt' else msg['author']['name'])
+
+        if url not in URLS:
+            USERS.append([badges, username, url])
+            URLS.append(url)
+
+    ##################################################################
+    #  writing
+
+    util.append(
+        fn,
+        tabulate(
+            [[len(CHAT), len(USERS)]],
+            ['messages', 'users'],
+            colalign=('center', 'center'),
+            tablefmt='simple_outline',
+        ),
+    )
+
+    util.append(
+        fn,
+        tabulate(
+            USERS,
+            ['Badges', 'Username', 'Link to channel (id)'],
+            tablefmt='simple_outline',
+        ),
+    )
+
+    # messages
+    util.append(
+        fn,
+        tabulate(
+            MESSAGES,
+            maxcolwidths=[None, None, 40, 100],
+            colalign=('left', 'right', 'right', 'left'),
+        ),
+    )
 
     log('')
 
