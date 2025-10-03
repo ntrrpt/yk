@@ -239,7 +239,7 @@ def dump_stream(str_dict):
     chat_proc = subprocess.Popen(c_chat, stdout=chat_txt, stderr=chat_txt, cwd=str_dir)
     chat_pid = psutil.Process(chat_proc.pid)
 
-    threads.append(str_dict['url'])
+    threads.append(str_dict['url'].removesuffix('/live'))
 
     sw = Stopwatch(2)
     sw.restart()
@@ -255,7 +255,7 @@ def dump_stream(str_dict):
 
     total_time = datetime.timedelta(seconds=int(sw.duration))
 
-    threads.remove(str_dict['url'])
+    threads.remove(str_dict['url'].removesuffix('/live'))
 
     if str_pid.is_running():
         if unload:
