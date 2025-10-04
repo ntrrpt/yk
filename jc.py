@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import json
-import os
 import sys
 from datetime import timedelta
+from pathlib import Path
 
 from tabulate import tabulate
 
@@ -16,26 +16,7 @@ def log(string, end='\n'):
         print(string, end=end)
 
 
-def timedelta_pretty(td: timedelta, pad: bool = True) -> str:
-    total_ms = int(td.total_seconds() * 1000)
-    days, rem = divmod(total_ms, 24 * 3600 * 1000)
-    hours, rem = divmod(rem, 3600 * 1000)
-    minutes, rem = divmod(rem, 60 * 1000)
-    seconds, ms = divmod(rem, 1000)
-
-    ms_digit = ms // 100
-
-    if pad:
-        if days:
-            return f'{days}|{hours:02}:{minutes:02}:{seconds:02}.{ms_digit}'
-        return f'{hours:02}:{minutes:02}:{seconds:02}.{ms_digit}'
-    else:
-        if days:
-            return f'{days}|{hours:02}:{minutes}:{seconds}.{ms_digit}'
-        return f'{hours:02}:{minutes}:{seconds}.{ms_digit}'
-
-
-def conv(filepath):
+def conv(path):
     ##################################################################
     #  init
 
@@ -46,21 +27,16 @@ def conv(filepath):
     URLS = []
     MESSAGES = []
 
-    fn = os.path.splitext(filepath)[0] + '.conv'
+    path = Path(path)
+    fn = path.stem + '.conv'
 
-    with open(filepath, 'r', encoding='utf-8') as file:
+    with open(path, 'r', encoding='utf-8') as file:
         CHAT = json.load(file)
-
-    util.delete(fn)
 
     ##################################################################
     #  type of stream (youtube / twitch)
 
-    types = []
-    for msg in CHAT:
-        types.append(msg['action_type'])
-
-    types = list(set(types))
+    types = list(set([x['action_type'] for x in CHAT]))
 
     if len(types) > 1:
         m = f'{fn}: new types: {types}'
@@ -90,7 +66,7 @@ def conv(filepath):
             continue
 
         log(
-            f'messages: {len(CHAT)}/{i}, users: {len(USERS)}',
+            f'm: {len(CHAT)}/{i}, u: {len(USERS)}',
             end='\r',
         )
 
@@ -102,12 +78,13 @@ def conv(filepath):
                 badges += (', ' if b > 0 else '') + badge['title']
 
         # idk how handle locales
-        if 'Verified' in badges or 'Подтверждено' in badges:
-            icon = '✔'
-        if 'Moderator' in badges or 'Модератор' in badges:
-            icon = 'M'
-        if 'Owner' in badges or 'Владелец' in badges:
-            icon = 'O'
+        for var, target in [
+            (['Verified', 'Подтверждено'], '✔'),
+            (['Moderator', 'Модератор'], 'M'),
+            (['Owner', 'Владелец'], 'O'),
+        ]:
+            if util.con(var, badges):
+                icon += target
 
         username = (
             msg['author']['name'] if SITE == 'yt' else msg['author']['display_name']
@@ -126,28 +103,42 @@ def conv(filepath):
         all_time += delta
         delay_time = msg['timestamp']
 
-        timestr = timedelta_pretty(timedelta(microseconds=int(all_time)))
+        timestr = util.timedelta_pretty(timedelta(microseconds=int(all_time)))
         # datetime.datetime.fromtimestamp(history[i]['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
         MESSAGES.append(
             [
                 timestr,
                 icon,
-                str(username) or '__NULL__',
-                str(msg['message']) or '__NULL__',
+                util.str_cut(username, 20, '~') or '__NULL__',
+                msg['message'] or '__NULL__',
             ]
         )
 
         url = LINK + (msg['author']['id'] if SITE == 'yt' else msg['author']['name'])
 
-        if url not in URLS:
-            USERS.append([badges, username, url])
-            URLS.append(url)
+        if url in URLS:
+            continue
+
+        USERS.append([badges, username, url])
+        URLS.append(url)
+
+    log('')
 
     ##################################################################
-    #  writing
+    #  writing conv
 
-    util.append(
+    USERS = sorted(USERS, key=lambda x: x[1])
+    for var in [
+        (['sponsor', 'спонсор']),  # new
+        (['Sponsor', 'Спонсор']),
+        (['Verified', 'Подтверждено']),
+        (['Moderator', 'Модератор']),
+        (['Owner', 'Владелец']),
+    ]:
+        USERS = sorted(USERS, key=lambda x: 0 if util.con(var, x[0]) else 1)
+
+    util.write(
         fn,
         tabulate(
             [[len(CHAT), len(USERS)]],
@@ -166,17 +157,14 @@ def conv(filepath):
         ),
     )
 
-    # messages
     util.append(
         fn,
         tabulate(
             MESSAGES,
-            maxcolwidths=[None, None, 40, 100],
+            maxcolwidths=[None, None, None, 100],
             colalign=('left', 'right', 'right', 'left'),
         ),
     )
-
-    log('')
 
 
 if __name__ == '__main__':

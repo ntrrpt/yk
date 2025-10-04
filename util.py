@@ -3,7 +3,7 @@ import pprint
 import re
 import sys
 import unicodedata
-from datetime import datetime
+from datetime import datetime, timedelta
 from http.cookiejar import MozillaCookieJar
 from pathlib import Path
 
@@ -28,6 +28,24 @@ yta_q = [
     '2160p60',
     'best',
 ]
+
+
+def timedelta_pretty(td: timedelta) -> str:
+    total_ms = int(td.total_seconds() * 1000)
+    days, rem = divmod(total_ms, 24 * 3600 * 1000)
+    hours, rem = divmod(rem, 3600 * 1000)
+    minutes, rem = divmod(rem, 60 * 1000)
+    seconds, ms = divmod(rem, 1000)
+
+    ms_digit = ms // 100
+
+    if days:
+        return f'{days}|{hours:02}:{minutes:02}:{seconds:02}.{ms_digit}'
+    return f'{hours:02}:{minutes:02}:{seconds:02}.{ms_digit}'
+
+
+def con(d, c):
+    return any(k in str(c) for k in d)
 
 
 def sum_mtime(files):
