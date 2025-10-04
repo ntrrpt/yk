@@ -28,7 +28,7 @@ def conv(path):
     MESSAGES = []
 
     path = Path(path)
-    fn = path.stem + '.conv'
+    fn = path.with_suffix('.conv')
 
     with open(path, 'r', encoding='utf-8') as file:
         CHAT = json.load(file)
