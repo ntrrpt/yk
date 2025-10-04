@@ -9,7 +9,6 @@ dependencies = [
     "apprise>=1.9.4",
     "chat-downloader>=0.2.8",
     "loguru>=0.7.3",
-    "prettytable>=3.15.1",
     "psutil>=7.0.0",
     "requests>=2.32.3",
     "stopwatch-py>=2.0.1",

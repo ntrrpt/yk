@@ -226,18 +226,6 @@ wheels = [
 ]
 
 [[package]]
-name = "prettytable"
-version = "3.15.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "wcwidth" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/38/95/78080e58efbdde46cda8d4498737bf9687839ed4a9744b068cc730a073ed/prettytable-3.15.1.tar.gz", hash = "sha256:f0edb38060cb9161b2417939bfd5cd9877da73388fb19d1e8bf7987e8558896e", size = 65907, upload-time = "2025-02-27T20:00:55.794Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8c/37/f687efd8760c183787ff16a61ec9e3515355178271f33fd7c14bf42e338c/prettytable-3.15.1-py3-none-any.whl", hash = "sha256:1bb0da7437e904ec879d2998aded19abc722719aa3d384a7faa44dcbe4aeb2e9", size = 33781, upload-time = "2025-02-27T20:00:53.838Z" },
-]
-
-[[package]]
 name = "psutil"
 version = "7.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -520,7 +508,6 @@ dependencies = [
     { name = "apprise" },
     { name = "chat-downloader" },
     { name = "loguru" },
-    { name = "prettytable" },
     { name = "psutil" },
     { name = "requests" },
     { name = "stopwatch-py" },
@@ -539,7 +526,6 @@ requires-dist = [
     { name = "apprise", specifier = ">=1.9.4" },
     { name = "chat-downloader", specifier = ">=0.2.8" },
     { name = "loguru", specifier = ">=0.7.3" },
-    { name = "prettytable", specifier = ">=3.15.1" },
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "stopwatch-py", specifier = ">=2.0.1" },
