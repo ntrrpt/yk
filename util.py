@@ -40,8 +40,8 @@ def timedelta_pretty(td: timedelta) -> str:
     ms_digit = ms // 100
 
     if days:
-        return f'{days}|{hours:02}:{minutes:02}:{seconds:02}.{ms_digit}'
-    return f'{hours:02}:{minutes:02}:{seconds:02}.{ms_digit}'
+        return f'{days}|{hours:02}:{minutes:02}:{seconds:02},{ms_digit}'
+    return f'{hours:02}:{minutes:02}:{seconds:02},{ms_digit}'
 
 
 def con(d, c):

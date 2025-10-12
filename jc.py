@@ -23,8 +23,7 @@ def conv(path):
     SITE = ''
     LINK = ''
     CHAT = ''
-    USERS = []
-    URLS = []
+    USERS = {}
     MESSAGES = []
 
     path = Path(path)
@@ -73,9 +72,9 @@ def conv(path):
         # badges (moderator, subscriber, etc.)
         icon = ''
         badges = ''
+
         if 'badges' in msg['author']:
-            for b, badge in enumerate(msg['author']['badges']):
-                badges += (', ' if b > 0 else '') + badge['title']
+            badges = ', '.join([badge['title'] for badge in msg['author']['badges']])
 
         # idk how handle locales
         for var, target in [
@@ -88,7 +87,7 @@ def conv(path):
 
         username = (
             msg['author']['name'] if SITE == 'yt' else msg['author']['display_name']
-        )
+        ) or '__NULL__'
 
         # https://github.com/astanin/python-tabulate/issues/189
         if username in ('True', 'False'):
@@ -110,23 +109,37 @@ def conv(path):
             [
                 timestr,
                 icon,
-                util.str_cut(username, 20, '~') or '__NULL__',
+                util.str_cut(username, 20, '~1'),
                 msg['message'] or '__NULL__',
             ]
         )
 
-        url = LINK + (msg['author']['id'] if SITE == 'yt' else msg['author']['name'])
+        uid = msg['author']['id'] if SITE == 'yt' else msg['author']['name']
 
-        if url in URLS:
-            continue
-
-        USERS.append([badges, username, url])
-        URLS.append(url)
+        if uid not in USERS:
+            USERS[uid] = {
+                'badges': badges,
+                'username': util.str_cut(username, 30, '~1'),
+                'msg_count': 1,
+            }
+        else:
+            USERS[uid]['msg_count'] += 1
 
     log('')
 
     ##################################################################
     #  writing conv
+
+    # list for tabulate
+    USERS = [
+        [
+            v.get('badges', ''),
+            v.get('username', ''),
+            v.get('msg_count', 0),
+            LINK + k,
+        ]
+        for k, v in USERS.items()
+    ]
 
     USERS = sorted(USERS, key=lambda x: x[1])
     for var in [
@@ -152,7 +165,8 @@ def conv(path):
         fn,
         tabulate(
             USERS,
-            ['Badges', 'Username', 'Link to channel (id)'],
+            ['Badges', 'Username', 'len', 'Link to channel (id)'],
+            colalign=('left', 'left', 'left', 'left'),
             tablefmt='simple_outline',
         ),
     )
