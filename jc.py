@@ -85,9 +85,10 @@ def conv(path):
             if util.con(var, badges):
                 icon += target
 
-        username = (
-            msg['author']['name'] if SITE == 'yt' else msg['author']['display_name']
-        ) or '__NULL__'
+        if SITE == 'yt':
+            username = msg['author'].get('name', '__NULL__')
+        else:
+            username = msg['author'].get('display_name', '__NULL__')
 
         # https://github.com/astanin/python-tabulate/issues/189
         if username in ('True', 'False'):
@@ -135,7 +136,7 @@ def conv(path):
         [
             v.get('badges', ''),
             v.get('username', ''),
-            v.get('msg_count', 0),
+            v.get('msg_count', 0) if v.get('msg_count', 0) > 1 else '',
             LINK + k,
         ]
         for k, v in USERS.items()
