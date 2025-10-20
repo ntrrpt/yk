@@ -16,7 +16,7 @@ def log(string, end='\n'):
         print(string, end=end)
 
 
-def conv(path):
+def main(path):
     ##################################################################
     #  init
 
@@ -27,7 +27,11 @@ def conv(path):
     MESSAGES = []
 
     path = Path(path)
-    fn = path.with_suffix('.conv')
+    conv = path.with_suffix('.conv')
+
+    if not path.is_file():
+        log(f'not exists: {path.as_posix()} ')
+        return
 
     with open(path, 'r', encoding='utf-8') as file:
         CHAT = json.load(file)
@@ -38,8 +42,8 @@ def conv(path):
     types = list(set([x['action_type'] for x in CHAT]))
 
     if len(types) > 1:
-        m = f'{fn}: new types: {types}'
-        util.append(fn, m)
+        m = f'{conv}: new types: {types}'
+        util.append(conv, m)
         log(m)
     if 'text_message' in types:
         SITE = 'tw'
@@ -48,8 +52,8 @@ def conv(path):
         SITE = 'yt'
         LINK = 'https://www.youtube.com/channel/'
     if not SITE:
-        m = f'{fn}: yt/tw not found in json'
-        util.append(fn, m)
+        m = f'{conv}: yt/tw not found in json'
+        util.append(conv, m)
         log(m)
         return
 
@@ -132,17 +136,21 @@ def conv(path):
     #  writing conv
 
     # list for tabulate
-    USERS = [
-        [
-            v.get('badges', ''),
-            v.get('username', ''),
-            v.get('msg_count', 0) if v.get('msg_count', 0) > 1 else '',
-            LINK + k,
-        ]
-        for k, v in USERS.items()
-    ]
+    USERS_TAB = []
 
-    USERS = sorted(USERS, key=lambda x: x[1])
+    for k, v in USERS.items():
+        msg_count = v.get('msg_count', 0)
+
+        USERS_TAB += [
+            [
+                v.get('badges', ''),
+                v.get('username', ''),
+                msg_count if msg_count > 1 else '',
+                LINK + k,
+            ]
+        ]
+
+    USERS_TAB = sorted(USERS_TAB, key=lambda x: x[1])
     for var in [
         (['sponsor', 'спонсор']),  # new
         (['Sponsor', 'Спонсор']),
@@ -150,12 +158,12 @@ def conv(path):
         (['Moderator', 'Модератор']),
         (['Owner', 'Владелец']),
     ]:
-        USERS = sorted(USERS, key=lambda x: 0 if util.con(var, x[0]) else 1)
+        USERS_TAB = sorted(USERS_TAB, key=lambda x: 0 if util.con(var, x[0]) else 1)
 
     util.write(
-        fn,
+        conv,
         tabulate(
-            [[len(CHAT), len(USERS)]],
+            [[len(CHAT), len(USERS_TAB)]],
             ['messages', 'users'],
             colalign=('center', 'center'),
             tablefmt='simple_outline',
@@ -163,9 +171,9 @@ def conv(path):
     )
 
     util.append(
-        fn,
+        conv,
         tabulate(
-            USERS,
+            USERS_TAB,
             ['Badges', 'Username', 'len', 'Link to channel (id)'],
             colalign=('left', 'left', 'left', 'left'),
             tablefmt='simple_outline',
@@ -173,7 +181,7 @@ def conv(path):
     )
 
     util.append(
-        fn,
+        conv,
         tabulate(
             MESSAGES,
             maxcolwidths=[None, None, None, 100],
@@ -185,4 +193,4 @@ def conv(path):
 if __name__ == '__main__':
     progress = True
     for i in range(1, len(sys.argv)):
-        conv(sys.argv[i])
+        main(sys.argv[i])

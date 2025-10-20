@@ -307,9 +307,9 @@ def dump_stream(str_dict):
     str_txt.close()
 
     try:
-        jc.conv(str_blank + '.json')
+        jc.main(str_blank + '.json')
     except Exception as ex:
-        log.error(f'jc error: {str(ex)}')
+        log.error(f'jc: {str(ex)}')
 
     str_dir.rename(args.output / str_name)
 
@@ -384,7 +384,7 @@ def get_channels(files):
     return channels
 
 
-def main_loop():
+def loop():
     global unload
 
     try:
@@ -500,4 +500,4 @@ if __name__ == '__main__':
     pwdir = Path(__file__).resolve().parent
     os.environ['PATH'] = os.pathsep.join([str(pwdir), os.environ['PATH']])
 
-    main_loop()
+    loop()
