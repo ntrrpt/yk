@@ -1,13 +1,16 @@
 FROM ghcr.io/astral-sh/uv:python3.13-alpine
 
-ARG FORCE_UV_SYNC_ON_START=NAH
+# uv envs
 ENV UV_NO_PROGRESS=1
 ENV UV_COMPILE_BYTECODE=1
 ENV NO_COLOR=1
+
+# yk envs
+ARG FORCE_UV_SYNC_ON_START=NAH
 ENV YK_OUTPUT=/out
 
 RUN apk update
-RUN apk add --no-cache --progress shadow go git ffmpeg build-base linux-headers
+RUN apk add --no-cache --progress shadow go git ffmpeg build-base linux-headers curl
 
 RUN git clone https://github.com/Kethsar/ytarchive.git /tmp/ytarchive
 RUN go build -C /tmp/ytarchive -o /usr/local/bin/ytarchive -v

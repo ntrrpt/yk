@@ -1,5 +1,5 @@
 services:
-  yk-yt:
+  yt:
     image: yk:latest
     container_name: yk-yt
     restart: unless-stopped
@@ -13,7 +13,7 @@ services:
       YK_LOG_PATH: /out
       YK_DELAY: 300 # big delay for yt
       # YK_APPRISE: apprise.yml
-      YK_SRC_LISTS: /tmp/list-yt.txt
+      YK_SRC_LISTS: /tmp/yt.txt
     build:
       context: https://github.com/ntrrpt/yk.git
       args:
@@ -22,18 +22,17 @@ services:
         FORCE_UV_SYNC_ON_START: YES
     volumes:
       - ./:/out
-      - ./list-yt.txt:/tmp/list-yt.txt
+      - ./yt.txt:/tmp/yt.txt
 
       # po token extractor plugin 
       # - ./bgutil-ytdlp-pot-provider.zip:/etc/yt-dlp/plugins/bgutil-ytdlp-pot-provider.zip
 
     command: ['--yta']
 
-  yk-tw:
+  tw:
     image: yk:latest
     container_name: yk-tw
     restart: unless-stopped
-    network_mode: host
     tty: true
     stdin_open: true
     user: "1000"
@@ -41,7 +40,7 @@ services:
     environment:
       YK_LOG_PATH: /out
       YK_DELAY: 15
-      YK_SRC_LISTS: /tmp/list-tw.txt
+      YK_SRC_LISTS: /tmp/tw.txt
     build:
       context: https://github.com/ntrrpt/yk.git
       args:
@@ -49,7 +48,7 @@ services:
         FORCE_UV_SYNC_ON_START: YES
     volumes:
       - ./:/out
-      - ./list-tw.txt:/tmp/list-tw.txt
+      - ./tw.txt:/tmp/tw.txt
 
     command: []
 
