@@ -437,7 +437,7 @@ if __name__ == '__main__':
 
     # fmt: off
     add('-o', '--output', type=Path, default=Path(evg("YK_OUTPUT", '.')),   help='stream output folder')
-    add('-l', '--log',    type=Path, default=Path(evg("YK_LOG_PATH", '.')), help='log output folder')
+    add('-l', '--log',    type=Path, default=Path(evg("YK_LOG", '.')), help='log output folder')
     add('-d', '--delay',  type=int,  default=int(evg("YK_DELAY", 15)),      help='streams check delay')
 
     add('-s', '--src',     nargs='+', default=[], help='files with channels/streams (list1.txt, /root/list2.txt)')
