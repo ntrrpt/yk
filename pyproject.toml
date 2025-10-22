@@ -1,5 +1,5 @@
 [project]
-name = "yakayaka"
+name = "yk"
 version = "1.0.0"
 description = "monitoring and recording livestreams"
 authors = ["ntrrpt"]
