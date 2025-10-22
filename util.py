@@ -6,6 +6,7 @@ import unicodedata
 from datetime import datetime, timedelta
 from http.cookiejar import MozillaCookieJar
 from pathlib import Path
+from typing import List
 
 import requests
 from loguru import logger as log
@@ -65,7 +66,7 @@ def float_fmt(number: int, digits: int):
     return f'{number:.{digits}f}'
 
 
-def esc(name: str, replacement: str = '_') -> str:
+def esc(name: str, replacement: str = '_', limit: int = 255) -> str:
     allowed_brackets = '()[]{}'
     r = []
 
@@ -85,7 +86,7 @@ def esc(name: str, replacement: str = '_') -> str:
     r = r.rstrip(' .')
     r = re.sub(r'_+', '_', r)
 
-    return r[:255]
+    return r[:limit]
 
 
 def append(path: Path | str, data: str, end: str = '\n'):
@@ -101,7 +102,6 @@ def write(path: Path | str, data: str, end: str = '\n'):
 
 
 def delete(path: Path | str):
-    path = Path(path)
     rem_file = Path(path)
     rem_file.unlink(missing_ok=True)
     log.trace(f'{path} deleted')
@@ -141,6 +141,36 @@ def remove_all_exact(path, target):
                 f.write(line)
 
     os.utime(path, (fst.st_atime, fst.st_mtime))
+
+
+def get_files(
+    paths: str | Path | List[str | Path],
+    recursive: bool = False,
+    exts: List[str] = None,
+) -> List[Path]:
+    if not isinstance(paths, list):
+        paths = [paths]
+
+    result: List[Path] = []
+
+    def matches_extensions(file_path: Path):
+        return exts is None or file_path.suffix in exts
+
+    for p in paths:
+        path = Path(p)
+        if not path.exists():
+            continue
+
+        if path.is_file():
+            if matches_extensions(path):
+                result.append(path)
+        elif path.is_dir():
+            files = path.rglob('*') if recursive else path.iterdir()
+            result.extend(f for f in files if f.is_file() and matches_extensions(f))
+        else:
+            raise ValueError(f'invalid path type: {path}')
+
+    return result
 
 
 def yt_dump_thumb(path: Path | str, video_id: str, proxy: str | None = None):

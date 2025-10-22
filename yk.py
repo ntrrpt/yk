@@ -336,8 +336,7 @@ def get_channels(files):
     channels = []
 
     for file in files:
-        fp = Path(file)
-        if not fp.is_file():
+        if not Path(file).is_file():
             log.error(f'{file} not exists')
             continue
 
@@ -389,15 +388,16 @@ def loop():
 
     try:
         while True:
-            channels = get_channels(args.src)
-            mtimes = util.sum_mtime(args.src)
+            files = util.get_files(args.src, exts=['.txt'])
+            if not files:
+                log.error('no files for monitoring')
+                time.sleep(args.delay)
 
-            if not channels:
-                log.error('no channels for monitoring')
-                break
+            channels = get_channels(files)
+            mtimes = util.sum_mtime(files)
 
             for ch in channels:
-                if util.sum_mtime(args.src) != mtimes:
+                if util.sum_mtime(files) != mtimes:
                     log.info('list updated!')
                     break
 
@@ -415,10 +415,8 @@ def loop():
                 log.trace(s % (channels.index(ch) + 1, len(channels), len(threads)))
 
                 for i in range(args.delay):
-                    if util.sum_mtime(args.src) != mtimes:
-                        break
-
-                    time.sleep(1)
+                    if util.sum_mtime(files) == mtimes:
+                        time.sleep(1)
 
     except KeyboardInterrupt:
         if threads:
@@ -426,6 +424,8 @@ def loop():
             log.warning('Stopping...')
             while threading.active_count() > 1:
                 time.sleep(1)
+
+        sys.exit(0)
 
 
 if __name__ == '__main__':
@@ -455,8 +455,11 @@ if __name__ == '__main__':
     args = arg.parse_args()
     args.output = args.output.resolve()  # subprocess pwd fix
 
-    args.log.mkdir(parents=True, exist_ok=True)
-    log_path = args.log / util.dt_now('%Y-%m-%d.log')
+    if args.log.is_dir():
+        log_path = args.log / util.dt_now('%Y-%m-%d.log')
+    elif args.log.suffix in ['.txt', '.log']:
+        log_path = args.log
+
     log.add(log_path, encoding='utf-8')
 
     if args.verbose:
@@ -466,7 +469,7 @@ if __name__ == '__main__':
 
     for var, target in [
         ('YK_OUTPUT', args.output),
-        ('YK_LOG_PATH', args.log),
+        ('YK_LOG', args.log),
         ('YK_DELAY', args.delay),
         ('YK_COOKIES', args.cookies),
         ('YK_BGUTIL', args.bgutil),
@@ -477,7 +480,7 @@ if __name__ == '__main__':
         ('YK_ARGS_STREAMLINK', _c_streamlink),
         ('YK_ARGS_YTDLP', _c_ytdlp),
         ('YK_ARGS_YTARCHIVE', _c_ytarchive),
-        ('YK_SRC_LISTS', args.src),
+        ('YK_SRC', args.src),
         ('YK_PROXIES', args.proxy),
         ('YK_APPRISE', args.apprise),
     ]:
@@ -486,13 +489,14 @@ if __name__ == '__main__':
             target += env.split()
         log.trace(f'{var}: {target}')
 
-    if not get_channels(args.src):
-        util.die('no channels in files')
+    if not args.src:
+        util.die('no channel lists, add some with "--src" argument')
 
-    appcfg = apprise.AppriseConfig()
-    for conf in args.apprise:
-        appcfg.add(conf)
-    apobj.add(appcfg)
+    if args.apprise:
+        appcfg = apprise.AppriseConfig()
+        for conf in util.get_files(args.apprise, exts=['.yml']):
+            appcfg.add(conf)
+        apobj.add(appcfg)
 
     args.output.mkdir(parents=True, exist_ok=True)
 
