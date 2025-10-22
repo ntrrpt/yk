@@ -38,6 +38,7 @@ services:
 
     environment:
       YK_DELAY: 15
+      YK_LOG: "/out/log.txt"
     build:
       context: https://github.com/ntrrpt/yk.git
       args:
