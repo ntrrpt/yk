@@ -456,16 +456,16 @@ if __name__ == '__main__':
     args.output = args.output.resolve()  # subprocess pwd fix
 
     if args.log.is_dir():
-        log_path = args.log / util.dt_now('%Y-%m-%d.log')
+        args.log = args.log / util.dt_now('%Y-%m-%d.log')
     elif args.log.suffix in ['.txt', '.log']:
-        log_path = args.log
+        args.log = args.log
 
-    log.add(log_path, encoding='utf-8')
+    log.add(args.log, encoding='utf-8')
 
     if args.verbose:
         log.remove()
         log.add(sys.stderr, level='TRACE')
-        log.add(log_path, level='TRACE', encoding='utf-8')
+        log.add(args.log, level='TRACE', encoding='utf-8')
 
     for var, target in [
         ('YK_OUTPUT', args.output),
