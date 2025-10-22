@@ -403,7 +403,7 @@ def loop():
 
                 if ch['url'] not in threads and check_live(ch['url']):
                     if ch['delete']:
-                        for src in args.src:
+                        for src in files:
                             util.remove_all_exact(src, ch['url'])
 
                         log.info(f'removed {ch["url"]!r}')
