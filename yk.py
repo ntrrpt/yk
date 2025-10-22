@@ -460,12 +460,14 @@ if __name__ == '__main__':
     elif args.log.suffix in ['.txt', '.log']:
         args.log = args.log
 
-    log.add(args.log, encoding='utf-8')
-
+    log.remove()
     if args.verbose:
-        log.remove()
         log.add(sys.stderr, level='TRACE')
         log.add(args.log, level='TRACE', encoding='utf-8')
+    else:
+        guru_fmt = '<level>[{time:YYYY-MM-DD HH:mm:ss}]</level> {message}'
+        log.add(sys.stderr, format=guru_fmt)
+        log.add(args.log, format=guru_fmt, encoding='utf-8')
 
     for var, target in [
         ('YK_OUTPUT', args.output),
