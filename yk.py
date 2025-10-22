@@ -493,10 +493,10 @@ if __name__ == '__main__':
         util.die('no channel lists, add some with "--src" argument')
 
     if args.apprise:
-        appcfg = apprise.AppriseConfig()
-        for conf in util.get_files(args.apprise, exts=['.yml']):
-            appcfg.add(conf)
-        apobj.add(appcfg)
+        cfg = apprise.AppriseConfig()
+        for file in util.get_files(args.apprise, exts=['.yml']):
+            cfg.add(str(file))
+        apobj.add(cfg)
 
     args.output.mkdir(parents=True, exist_ok=True)
 
