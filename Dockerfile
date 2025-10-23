@@ -24,13 +24,11 @@ RUN mkdir -p /.cache && chmod 777 /.cache
 RUN mkdir -p /yk && chmod 777 /yk
 
 WORKDIR /yk
-COPY pyproject.toml uv.lock /yk
+COPY . /yk
 
 RUN if [ "${FORCE_UV_SYNC_ON_START}" != "YES" ]; then \
         uv sync; \
     fi
-
-COPY . /yk
 
 ENTRYPOINT ["uv", "run", "yk.py"]
 CMD []
