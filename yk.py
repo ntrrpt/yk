@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import datetime
 import json
 import os
 import random
@@ -11,6 +10,7 @@ import subprocess
 import sys
 import threading
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import apprise
@@ -138,9 +138,19 @@ def dump_stream(str_dict):
     with open(str_blank + '.info', 'w', encoding='utf-8') as f:
         f.write(str(str_info))
 
-    apobj.notify(title=f'[ONLINE] {str_user}', body=str_title)
+    # '(online for HH:MM:SS,MS) string'
+    since_str = ''
+    if str_json.get('release_timestamp'):
+        try:
+            rls = datetime.fromtimestamp(int(str_json['release_timestamp']))
+            delta = datetime.now() - rls
+            since_str = f'\n(online for {util.timedelta_pretty(delta)})'
+        except Exception as e:
+            log.error(f'since | {e}')
 
-    log.success(f'[ONLINE] ({str_user} - {str_title})')
+    apobj.notify(title=f'[ONLINE] {str_user}', body=str_title + since_str)
+
+    log.success(f'[ONLINE] ({str_user} - {str_title + since_str.replace("\n", " ")}')
 
     c = _c_streamlink.copy()
     c += util.http_cookies(args.cookies)
@@ -253,7 +263,7 @@ def dump_stream(str_dict):
         if str_pid.status() == psutil.STATUS_ZOMBIE:
             break
 
-    total_time = datetime.timedelta(seconds=int(sw.duration))
+    total_time = timedelta(seconds=int(sw.duration))
 
     threads.remove(str_dict['url'].removesuffix('/live'))
 
