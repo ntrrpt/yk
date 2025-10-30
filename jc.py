@@ -78,7 +78,9 @@ def main(path):
         badges = ''
 
         if 'badges' in msg['author']:
-            badges = ', '.join([badge['title'] for badge in msg['author']['badges']])
+            badges = ', '.join(
+                [badge.get('title', badge['name']) for badge in msg['author']['badges']]
+            )
 
         # idk how handle locales
         for var, target in [
