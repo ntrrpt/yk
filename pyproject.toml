@@ -14,7 +14,7 @@ dependencies = [
     "stopwatch-py>=2.0.1",
     "streamlink>=7.6.0",
     "tabulate[widechars]>=0.9.0",
-    "yt-dlp>=2025.9.23",
+    "yt-dlp>=2025.10.22",
 ]
 
 [dependency-groups]
