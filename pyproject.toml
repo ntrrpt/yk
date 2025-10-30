@@ -7,7 +7,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "apprise>=1.9.4",
-    "chat-downloader>=0.2.8",
+    "chat-downloader @ git+https://github.com/ntrrpt/chat-downloader.git@354931cbe2be7acc635f08a724e8f85f7b3f3dc2",
     "loguru>=0.7.3",
     "psutil>=7.0.0",
     "requests>=2.32.3",
