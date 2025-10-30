@@ -13,9 +13,7 @@ docker compose up --build
 ## via docker:
 
 ```
-docker build -t yk:latest \
-  --build-arg FORCE_UV_SYNC_ON_START=YES \
-  https://github.com/ntrrpt/yk.git
+docker build -t yk:latest https://github.com/ntrrpt/yk.git
 ```
 
 

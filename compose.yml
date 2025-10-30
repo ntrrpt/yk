@@ -1,7 +1,8 @@
 services:
   yt:
-    image: yk:latest
     container_name: yt
+
+    image: yk:latest
     restart: unless-stopped
     network_mode: host
     tty: true
@@ -13,10 +14,6 @@ services:
       YK_DELAY: 300 # big delay for yt
     build:
       context: https://github.com/ntrrpt/yk.git
-      args:
-        # update yt-dlp/deps on every container start
-        # (because google likes to break things)
-        FORCE_UV_SYNC_ON_START: YES
     volumes:
       - ./:/out
       - ./lists/yt.txt:/src/yt.txt
@@ -29,8 +26,9 @@ services:
     command: ['--yta']
 
   tw:
-    image: yk:latest
     container_name: tw
+
+    image: yk:latest
     restart: unless-stopped
     tty: true
     stdin_open: true
@@ -41,9 +39,6 @@ services:
       YK_LOG: "/out/log.txt"
     build:
       context: https://github.com/ntrrpt/yk.git
-      args:
-        # (and twitch sometimes too)
-        FORCE_UV_SYNC_ON_START: YES
     volumes:
       - ./:/out
       - ./lists/tw.txt:/src/tw.txt

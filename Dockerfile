@@ -1,34 +1,32 @@
 FROM ghcr.io/astral-sh/uv:python3.13-alpine
 
 # uv envs
-ENV UV_NO_PROGRESS=1
 ENV UV_COMPILE_BYTECODE=1
-ENV NO_COLOR=1
+ENV UV_NO_PROGRESS=1
 ENV UV_NO_DEV=1
+ENV NO_COLOR=1
 
 # yk envs
-ARG FORCE_UV_SYNC_ON_START=NAH
+ENV YK_COOKIES=/cookies.txt
+ENV YK_APPRISE=/apprise
 ENV YK_OUTPUT=/out
 ENV YK_LOG=/out
-ENV YK_APPRISE=/apprise
 ENV YK_SRC=/src
-ENV YK_COOKIES=/cookies.txt
 
-RUN apk update
-RUN apk add --no-cache --progress shadow go git ffmpeg build-base linux-headers curl
+RUN apk add --no-cache --progress bash go git curl ffmpeg build-base linux-headers 
 
-RUN git clone https://github.com/Kethsar/ytarchive.git /tmp/ytarchive
-RUN go build -C /tmp/ytarchive -o /usr/local/bin/ytarchive -v
+RUN bash -c 'git clone https://github.com/Kethsar/ytarchive.git /tmp/ytarchive \
+    && go build -C /tmp/ytarchive -o /usr/local/bin/ytarchive -v \
+    && rm -rf /tmp/ytarchive /root/go /root/.cache/go-build'
 
-RUN mkdir -p /.cache && chmod 777 /.cache
-RUN mkdir -p /yk && chmod 777 /yk
+RUN bash -c 'mkdir -p /app \ 
+    && chmod -R 777 /app \
+    && mkdir -p /.cache \
+    && chmod 777 /.cache'
 
-WORKDIR /yk
-COPY . /yk
+WORKDIR /app
+COPY pyproject.toml uv.lock /app
+RUN uv sync
+COPY . /app
 
-RUN if [ "${FORCE_UV_SYNC_ON_START}" != "YES" ]; then \
-        uv sync; \
-    fi
-
-ENTRYPOINT ["uv", "run", "yk.py"]
-CMD []
+ENTRYPOINT ["uv", "run", "--no-sync", "yk.py"]
