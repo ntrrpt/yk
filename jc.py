@@ -79,7 +79,10 @@ def main(path):
 
         if 'badges' in msg['author']:
             badges = ', '.join(
-                [badge.get('title', badge['name']) for badge in msg['author']['badges']]
+                [
+                    badge.get('title', badge.get('name', '__NULL__'))
+                    for badge in msg['author']['badges']
+                ]
             )
 
         # idk how handle locales
@@ -93,6 +96,9 @@ def main(path):
 
         if SITE == 'yt':
             username = msg['author'].get('name', '__NULL__')
+
+            # FIXME: temporary (?) fix for chat_downloader
+            username = username.removeprefix('@')
         else:
             username = msg['author'].get('display_name', '__NULL__')
 
