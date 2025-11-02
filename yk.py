@@ -440,7 +440,7 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}):
             toml[item]['regex_desc'] = cfg.get('regex_desc', rgx)
 
             if not toml[item]['url']:
-                log.warning(f'{file}:{item}: empty url, skipping.')
+                log.trace(f'{file}:{item}: empty url, skipping.')
                 toml.pop(item)
                 continue
 
