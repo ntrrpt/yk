@@ -32,7 +32,7 @@ yta_q = [
 ]
 
 
-def timedelta_pretty(td: timedelta) -> str:
+def timedelta_pretty(td: timedelta, ms_add=False) -> str:
     total_ms = int(td.total_seconds() * 1000)
     days, rem = divmod(total_ms, 24 * 3600 * 1000)
     hours, rem = divmod(rem, 3600 * 1000)
@@ -41,9 +41,12 @@ def timedelta_pretty(td: timedelta) -> str:
 
     ms_digit = ms // 100
 
+    r = f'{hours:02}:{minutes:02}:{seconds:02}'
+    if ms_add:
+        r += f',{ms_digit}'
     if days:
-        return f'{days}|{hours:02}:{minutes:02}:{seconds:02},{ms_digit}'
-    return f'{hours:02}:{minutes:02}:{seconds:02},{ms_digit}'
+        r = f'{days}|{r}'
+    return r
 
 
 def con(d, c):
@@ -129,7 +132,6 @@ def die(s: str = ''):
     sys.exit(1)
 
 
-# todo: remove dots in exts
 def get_files(
     paths: str | Path | List[str | Path],
     recursive: bool = False,

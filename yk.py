@@ -171,11 +171,9 @@ def dump_stream(cfg: dict):
     since_str = ''
     if str_json.get('release_timestamp'):
         try:
-            rls = datetime.fromtimestamp(int(str_json['release_timestamp']))
-            delta = datetime.now() - rls
-            since_str = (
-                f'\n(online for {util.timedelta_pretty(delta)})'  # TODO: fix ','
-            )
+            rls_ts = datetime.fromtimestamp(int(str_json['release_timestamp']))
+            delta = datetime.now() - rls_ts
+            since_str = f'\n(online for {util.timedelta_pretty(delta)})'
         except Exception as e:
             log.error(f'since | {e}')
 
