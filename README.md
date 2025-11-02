@@ -2,7 +2,7 @@
 ```
 curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/ntrrpt/yk.git && cd yk
-uv run yk.py -v -d 15 -s lists/tw.txt
+uv run yk.py -v -d 15 -s lists/tw.toml
 ```
 
 ## via docker compose:
@@ -25,7 +25,7 @@ docker run -d \
   -t -i \
   -e YK_DELAY=15 \
   -v "$(pwd):/out" \
-  -v "$(pwd)/lists/tw.txt:/src/tw.txt" \
+  -v "$(pwd)/lists/tw.toml:/src/tw.toml" \
   yk:latest
 ```
 
