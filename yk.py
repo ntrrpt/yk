@@ -436,8 +436,8 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}):
             toml[item]['delete'] = bool(cfg.get('delete', cfg.get('d', False)))
 
             rgx = cfg.get('regex', cfg.get('r', ''))
-            toml[item]['regex_title'] = cfg.get('regex_title', cfg.get(rgx, ''))
-            toml[item]['regex_desc'] = cfg.get('regex_desc', cfg.get(rgx, ''))
+            toml[item]['regex_title'] = cfg.get('regex_title', rgx)
+            toml[item]['regex_desc'] = cfg.get('regex_desc', rgx)
 
             if not toml[item]['url']:
                 log.warning(f'{file}:{item}: empty url, skipping.')
