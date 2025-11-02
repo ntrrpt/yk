@@ -93,7 +93,7 @@ def dump_stream(cfg: dict):
 
     global UNLOAD, YTDLP_CONFIG
 
-    # getting random proxy for all 'dump_stream' thread
+    # getting random proxy for all 'dump_stream' func
     str_proxy = random.choice(args.proxy) if args.proxy else None
 
     if str_proxy:
@@ -132,23 +132,19 @@ def dump_stream(cfg: dict):
     str_user = util.esc(str_user)
 
     # regex filtering
-    if cfg['regex']:
-        regex = cfg['regex'].lower()
+    if cfg['regex_title']:
+        if not re.findall(cfg['regex_title'].lower(), str_title.lower()):
+            return
 
-        # TODO: separate title and desc
-        #       (but if re_title only availible, then re_desc = re_title)
-        re_title = re.findall(regex, str_title.lower())
-        re_desc = re.findall(regex, str_json['description'].lower())
-
-        if not re_title and not re_desc:
+    if cfg['regex_desc']:
+        if not re.findall(cfg['regex_desc'].lower(), str_json['description'].lower()):
             return
 
     # [YY_MM_DD hh_mm_ss] username - livestream title
     str_name = util.esc(f'[{util.dt_now()}] {str_user} - {str_title}')
 
     # folder for livestream
-    # TODO: folder feature
-    str_dir = args.output / f'[live] {str_name}'
+    str_dir = args.output / Path(util.esc(cfg['folder'])) / f'[live] {str_name}'
     str_dir.mkdir(parents=True, exist_ok=True)
 
     # template for livestream files (*.json, *.conv, *.log, ...)
@@ -167,7 +163,7 @@ def dump_stream(cfg: dict):
     with open(str_blank + '.info', 'w', encoding='utf-8') as f:
         f.write(str(str_info))
 
-    # append 'online for HH:MM:SS,MS' to notify
+    # append 'online for HH:MM:SS' to notify
     since_str = ''
     if str_json.get('release_timestamp'):
         try:
@@ -395,6 +391,7 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}):
         try:
             with open(file, 'rb') as f:
                 toml = tomllib.load(f)
+                toml_or = toml.copy()
 
             assert toml  # empty check
 
@@ -435,9 +432,18 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}):
         for item, cfg in toml.copy().items():
             toml[item]['url'] = cfg.get('url', cfg.get('u', ''))
             toml[item]['folder'] = cfg.get('folder', cfg.get('f', ''))
-            toml[item]['regex'] = cfg.get('regex', cfg.get('r', ''))
+
             toml[item]['quality'] = cfg.get('quality', cfg.get('q', 'best'))
             toml[item]['delete'] = bool(cfg.get('delete', cfg.get('d', False)))
+
+            rgx = cfg.get('regex', cfg.get('r', ''))
+            toml[item]['regex_title'] = cfg.get('regex_title', cfg.get(rgx, ''))
+            toml[item]['regex_desc'] = cfg.get('regex_desc', cfg.get(rgx, ''))
+
+            if not toml[item]['url']:
+                log.warning(f'{file}:{item}: empty url, skipping.')
+                toml.pop(item)
+                continue
 
             if not is_url(toml[item]['url']):
                 log.warning(
@@ -465,9 +471,6 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}):
         ## deleting single-use items
 
         if cfg_to_del:
-            with open(file, 'rb') as f:
-                toml_or = tomllib.load(f)
-
             for item, cfg in toml_or.copy().items():
                 if toml[item]['delete'] and toml[item]['url'] == cfg_to_del.get('url'):
                     toml_or.pop(item)
