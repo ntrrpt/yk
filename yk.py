@@ -1,38 +1,47 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import argparse
 import json
 import os
 import random
 import re
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
 import threading
 import time
+import tomllib
 from datetime import datetime, timedelta
+from functools import reduce
 from pathlib import Path
+from pprint import pformat as pf
 
 import apprise
 import psutil
 import requests
+import tomli_w
 import yt_dlp
 from loguru import logger as log
 from stopwatch import Stopwatch
+from tabulate import tabulate
+from validators import url as is_url
 
 import jc
 import util
 
-threads = []
-unload = False
+CONFIG = {}
+ONLINE = []
+UNLOAD = False
 
-ytdlp_config = {
+YTDLP_CONFIG = {
     'quiet': True,
     'playlist_items': 0,
     'noplaylist': True
 }  # fmt: skip
 
-_c_streamlink = [
+C_STREAMLINK = [
     "streamlink",
     "--fs-safe-rules", "Windows",
     "--twitch-disable-ads",
@@ -50,7 +59,7 @@ _c_streamlink = [
     "--twitch-disable-hosting"
 ]  # fmt: skip
 
-_c_ytdlp = [
+C_YTDLP = [
     "yt-dlp",
     "--verbose",
     "--ignore-config",
@@ -59,7 +68,7 @@ _c_ytdlp = [
     "-N", "3"
 ]  # fmt: skip
 
-_c_ytarchive = [
+C_YTARCHIVE = [
     "ytarchive",
     "--threads", "3",
     "--trace",
@@ -71,23 +80,37 @@ _c_ytarchive = [
 ]  # fmt: skip
 
 
-def dump_stream(str_dict):
-    global unload
+def dump_stream(cfg: dict):
+    """
+    cfg_example = {
+        'delete': False,
+        'folder': '',
+        'quality': 'best',
+        'regex': '',
+        'url': 'https://www.youtube.com/channel/test'
+    }
+    """
 
+    global UNLOAD, YTDLP_CONFIG
+
+    # getting random proxy for all 'dump_stream' thread
     str_proxy = random.choice(args.proxy) if args.proxy else None
 
     if str_proxy:
-        ytdlp_config['proxy'] = str_proxy
+        YTDLP_CONFIG['proxy'] = str_proxy
 
     if args.cookies.is_file():
-        ytdlp_config['cookiefile'] = args.cookies
+        YTDLP_CONFIG['cookiefile'] = args.cookies
 
-    if 'youtube' in str_dict['url'] and 'watch?v=' not in str_dict['url']:
-        str_dict['url'] += '/live'
+    # += '/live' for channel links
+    if 'youtube' in cfg['url'] and 'watch?v=' not in cfg['url']:
+        cfg['url'] += '/live'
 
-    with yt_dlp.YoutubeDL(ytdlp_config) as y:
-        str_json = y.extract_info(str_dict['url'], download=False)
+    # getting livestream info
+    with yt_dlp.YoutubeDL(YTDLP_CONFIG) as y:
+        str_json = y.extract_info(cfg['url'], download=False)
 
+    # getting username and livestream title for files
     match str_json['extractor']:
         case 'youtube':
             str_title = str_json['title'][:-17]
@@ -108,24 +131,30 @@ def dump_stream(str_dict):
     str_title = util.esc(str_title)
     str_user = util.esc(str_user)
 
-    if str_dict['regex']:
-        regex = str_dict['regex'].lower()
+    # regex filtering
+    if cfg['regex']:
+        regex = cfg['regex'].lower()
 
+        # TODO: separate title and desc
+        #       (but if re_title only availible, then re_desc = re_title)
         re_title = re.findall(regex, str_title.lower())
         re_desc = re.findall(regex, str_json['description'].lower())
 
         if not re_title and not re_desc:
             return
 
-    str_name = f'[{util.dt_now()}] {str_user} - {str_title}'
-    str_name = util.esc(str_name)
+    # [YY_MM_DD hh_mm_ss] username - livestream title
+    str_name = util.esc(f'[{util.dt_now()}] {str_user} - {str_title}')
 
+    # folder for livestream
+    # TODO: folder feature
     str_dir = args.output / f'[live] {str_name}'
     str_dir.mkdir(parents=True, exist_ok=True)
 
+    # template for livestream files (*.json, *.conv, *.log, ...)
     str_blank = str(str_dir / str_name)
 
-    # dump preview image
+    # download youtube thumb
     if 'youtube' in str_json['extractor']:
         util.yt_dump_thumb(
             path=str_blank + '.jpg',
@@ -133,39 +162,43 @@ def dump_stream(str_dict):
             proxy=str_proxy,
         )
 
-    # saving stream info
+    # saving stream info to json
     str_info = json.dumps(str_json, indent=5, ensure_ascii=False, sort_keys=True)
     with open(str_blank + '.info', 'w', encoding='utf-8') as f:
         f.write(str(str_info))
 
-    # '(online for HH:MM:SS,MS) string'
+    # append 'online for HH:MM:SS,MS' to notify
     since_str = ''
     if str_json.get('release_timestamp'):
         try:
             rls = datetime.fromtimestamp(int(str_json['release_timestamp']))
             delta = datetime.now() - rls
-            since_str = f'\n(online for {util.timedelta_pretty(delta)})'
+            since_str = (
+                f'\n(online for {util.timedelta_pretty(delta)})'  # TODO: fix ','
+            )
         except Exception as e:
             log.error(f'since | {e}')
 
+    # notify and log
     apobj.notify(title=f'[ONLINE] {str_user}', body=str_title + since_str)
-
     log.success(f'[ONLINE] ({str_user} - {str_title + since_str.replace("\n", " ")}')
 
-    c = _c_streamlink.copy()
+    # streamlink cmd (default)
+    c = C_STREAMLINK.copy()
     c += util.http_cookies(args.cookies)
     c += [
-        '--url', str_dict['url'],
+        '--url', cfg['url'],
         '--output', str_blank + '.ts',
-        '--default-stream', str_dict['quality']
+        '--default-stream', cfg['quality']
     ]  # fmt: skip
 
     if str_proxy:
         c += ['--http-proxy', str_proxy]
 
+    # yt-dlp cmd
     if args.dlp:
-        c = _c_ytdlp.copy()
-        c += ['-o', str_blank + '.mp4', str_dict['url']]
+        c = C_YTDLP.copy()
+        c += ['-o', str_blank + '.mp4', cfg['url']]
 
         if 'youtube' in str_json['extractor']:
             c.insert(1, '--live-from-start')
@@ -178,12 +211,13 @@ def dump_stream(str_dict):
             c.insert(1, '--cookies')
             c.insert(2, str(args.cookies))
 
+    # ytarchive cmd
     if args.yta and 'youtube' in str_json['extractor']:
-        c = _c_ytarchive.copy()
+        c = C_YTARCHIVE.copy()
         c += [
             '--output', str_blank,
-            str_dict['url'],
-            str_dict['quality'],
+            cfg['url'],
+            cfg['quality'],
         ]  # fmt: skip
 
         if str_proxy:
@@ -194,6 +228,8 @@ def dump_stream(str_dict):
             c.insert(1, '--cookies')
             c.insert(2, str(args.cookies))
 
+        # append potoken to ytarchive cmd
+        # need 'https://github.com/Brainicism/bgutil-ytdlp-pot-provider/'
         try:
             r = requests.get(args.bgutil + '/ping', timeout=10)
             r.raise_for_status()
@@ -213,7 +249,7 @@ def dump_stream(str_dict):
             if 'poToken' not in bg:
                 raise Exception(f'invalid /get_pot: {bg}')
 
-            log.trace(f'potoken: {bg["poToken"]}')
+            log.debug(f'potoken: {bg["poToken"]}')
 
             c.insert(1, '--potoken')
             c.insert(2, bg['poToken'])
@@ -221,6 +257,7 @@ def dump_stream(str_dict):
         except Exception as ex:
             log.warning(f'bgutil | {str(ex)}')
 
+    # chat_downloader cmd
     c_chat = [
         'chat_downloader', 
         '--output', str_blank + '.json',
@@ -236,10 +273,10 @@ def dump_stream(str_dict):
         c_chat.insert(1, '--proxy')
         c_chat.insert(2, str_proxy)
 
-    log.trace(' '.join(c))
-    log.trace(' '.join(c_chat))
+    log.debug(' '.join(c))
+    log.debug(' '.join(c_chat))
 
-    # str process
+    # video process
     str_txt = open(str_blank + '.log', 'a')
     str_proc = subprocess.Popen(c, stdout=str_txt, stderr=str_txt, cwd=str_dir)
     str_pid = psutil.Process(str_proc.pid)
@@ -249,12 +286,15 @@ def dump_stream(str_dict):
     chat_proc = subprocess.Popen(c_chat, stdout=chat_txt, stderr=chat_txt, cwd=str_dir)
     chat_pid = psutil.Process(chat_proc.pid)
 
-    threads.append(str_dict['url'].removesuffix('/live'))
+    # prevent same urls being processed
+    ONLINE.append(cfg['url'].removesuffix('/live'))
 
+    # measure livestream duration
     sw = Stopwatch(2)
     sw.restart()
 
-    while not unload:
+    # looping until stream ended
+    while not UNLOAD:
         time.sleep(1)
 
         if not str_pid.is_running():
@@ -265,10 +305,11 @@ def dump_stream(str_dict):
 
     total_time = timedelta(seconds=int(sw.duration))
 
-    threads.remove(str_dict['url'].removesuffix('/live'))
+    ONLINE.remove(cfg['url'].removesuffix('/live'))
 
+    # shutdown stream process
     if str_pid.is_running():
-        if unload:
+        if UNLOAD:
             os.kill(str_proc.pid, signal.SIGTERM)
         else:
             os.waitpid(str_proc.pid, 0)
@@ -276,7 +317,7 @@ def dump_stream(str_dict):
 
         log.info(f'[offline] ({str_user} - {str_title}) ')
 
-    # manual merging
+    # manual ytarchive merging
     if args.yta and 'youtube' in str_json['extractor']:
         c_merge = '=C'
         files_to_delete = []
@@ -292,7 +333,6 @@ def dump_stream(str_dict):
                 file_path = str_dir / file
                 files_to_delete.append(file_path)
 
-        # merge video and audio
         with subprocess.Popen(c_merge, stderr=str_txt) as proc:
             while True:
                 time.sleep(1)
@@ -307,6 +347,7 @@ def dump_stream(str_dict):
                     log.error(f'merge error: {str_dir}')
                     break
 
+    # shutdown chat process
     if chat_pid.is_running():
         if chat_pid.status() == psutil.STATUS_ZOMBIE:
             os.waitpid(chat_proc.pid, 0)
@@ -316,11 +357,13 @@ def dump_stream(str_dict):
     chat_txt.close()
     str_txt.close()
 
+    # prettify chat .json
     try:
         jc.main(str_blank + '.json')
     except Exception as ex:
-        log.error(f'jc: {str(ex)}')
+        log.error(f'jc error: {str(ex)}')
 
+    # remove [live] prefix
     str_dir.rename(args.output / str_name)
 
 
@@ -342,95 +385,153 @@ def check_live(url):
                 return p == 0
 
 
-def get_channels(files):
-    channels = []
+def parse_configs(files: list = [], cfg_to_del: dict = {}):
+    tomls = []
 
     for file in files:
-        if not Path(file).is_file():
-            log.error(f'{file} not exists')
+        toml = {}
+
+        #########################
+        ## toml validation
+
+        try:
+            with open(file, 'rb') as f:
+                toml = tomllib.load(f)
+
+            assert toml  # empty check
+
+        except tomllib.TOMLDecodeError as ex:
+            log.error(f'toml decode error in {file!r}, {ex}')
             continue
 
-        with open(file) as f:
-            for line in f:
-                line = line.rstrip()
-                if not line or line.startswith('#'):
-                    continue
+        except FileNotFoundError as ex:
+            log.error(f"file {file!r} not found', {ex}")
+            continue
 
-                split = line.split()
+        except AssertionError:
+            log.error(f'file {file!r} is empty')
+            continue
 
-                url = split[0]
-                regex = ''
-                quality = 'best'
-                delete = False
+        except Exception as ex:
+            log.error(f'file error in {file!r}, {ex}')
+            continue
 
-                if len(split) > 1:
-                    quality = split[1]
+        # log.trace(f'stock {file}:\n' + pf(toml))
 
-                    g = [
-                        args.yta,
-                        quality not in util.yta_q,
-                        'youtube' in url or 'youtu.be' in url,
-                    ]
+        #########################
+        ## finding single-use items via '@' prefix in key
 
-                    if all(g):
-                        log.critical(f'{quality!r} not supported in ytarchive')
-                        log.info(f'choose something from {", ".join(util.yta_q)!r}')
+        for item in toml.copy().keys():
+            if is_url(item):
+                # key is url
+                toml[item]['url'] = item
 
-                        if not threads:
-                            sys.exit(1)
+            elif is_url(item.removeprefix('@')):
+                # key is @url, removing
+                toml[item]['delete'] = True
+                toml[item]['url'] = item.removeprefix('@')
 
-                if len(split) > 2:
-                    regex = split[2]
+        #########################
+        ## parsing remaining values
 
-                if url.startswith('@'):
-                    url = url.removeprefix('@')
-                    delete = True
+        for item, cfg in toml.copy().items():
+            toml[item]['url'] = cfg.get('url', cfg.get('u', ''))
+            toml[item]['folder'] = cfg.get('folder', cfg.get('f', ''))
+            toml[item]['regex'] = cfg.get('regex', cfg.get('r', ''))
+            toml[item]['quality'] = cfg.get('quality', cfg.get('q', 'best'))
+            toml[item]['delete'] = bool(cfg.get('delete', cfg.get('d', False)))
 
-                ch = {'url': url, 'regex': regex, 'quality': quality, 'delete': delete}
-                if ch not in channels:
-                    channels.append(ch)
+            if not is_url(toml[item]['url']):
+                log.warning(
+                    f'{file}:{item}: {cfg["url"]!r} is not a valid url, skipping.'
+                )
+                toml.pop(item)
+                continue
 
-    return channels
+            for i in ('u', 'f', 'r', 'q', 'd'):
+                if i in cfg:
+                    del toml[item][i]
+
+            if (
+                args.yta
+                and toml[item]['quality'] not in util.yta_q
+                and ('youtube' in toml[item]['url'] or 'youtu.be' in toml[item]['url'])
+            ):
+                log.error(
+                    f"{file}:{item}: {toml[item]['quality']!r} not supported in ytarchive, fallback to 'best' for now"
+                )
+                log.error(f'choose something from {", ".join(util.yta_q)!r}, ')
+                toml[item]['quality'] = 'best'
+
+        #########################
+        ## deleting single-use items
+
+        if cfg_to_del:
+            with open(file, 'rb') as f:
+                toml_or = tomllib.load(f)
+
+            for item, cfg in toml_or.copy().items():
+                if toml[item]['delete'] and toml[item]['url'] == cfg_to_del.get('url'):
+                    toml_or.pop(item)
+
+                    path = Path(file)
+                    fst = path.stat()
+
+                    with open(file, 'wb') as f:
+                        tomli_w.dump(toml_or, f)
+
+                    os.utime(path, (fst.st_atime, fst.st_mtime))
+
+                    log.warning(f'removed {item!r}')
+                    break
+
+        log.trace(f'{file}:\n' + pf(toml))
+
+        tomls.append(toml)
+
+    # return merged dicts
+    return reduce(lambda x, y: x | y, tomls)
 
 
 def loop():
-    global unload
+    global UNLOAD
 
     try:
         while True:
-            files = util.get_files(args.src, exts=['.txt'])
+            files = util.get_files(args.src, exts=['.toml'])
+
             if not files:
                 log.error('no files for monitoring')
                 time.sleep(args.delay)
 
-            channels = get_channels(files)
+            channels = parse_configs(files)
             mtimes = util.sum_mtime(files)
 
-            for ch in channels:
+            for i, (ch, cfg) in enumerate(channels.items(), start=1):
                 if util.sum_mtime(files) != mtimes:
                     log.info('list updated!')
                     break
 
-                if ch['url'] not in threads and check_live(ch['url']):
-                    if ch['delete']:
-                        for src in files:
-                            util.remove_all_exact(src, ch['url'])
+                if cfg['url'] not in ONLINE and check_live(cfg['url']):
+                    log.debug(f'{ch!r} is online:\n{pf(cfg)}')
 
-                        log.info(f'removed {ch["url"]!r}')
+                    if cfg['delete']:
+                        parse_configs(files, cfg)
 
-                    T = threading.Thread(target=dump_stream, args=(ch,))
-                    T.start()
+                    t = threading.Thread(target=dump_stream, args=(cfg,))
+                    t.start()
 
-                s = '%s / %s | %s is streaming.'
-                log.trace(s % (channels.index(ch) + 1, len(channels), len(threads)))
+                log.trace(
+                    '%s / %s | %s is streaming.' % (i, len(channels), len(ONLINE))
+                )
 
                 for i in range(args.delay):
                     if util.sum_mtime(files) == mtimes:
                         time.sleep(1)
 
     except KeyboardInterrupt:
-        if threads:
-            unload = True
+        if ONLINE:
+            UNLOAD = True
             log.warning('Stopping...')
             while threading.active_count() > 1:
                 time.sleep(1)
@@ -439,59 +540,64 @@ def loop():
 
 
 if __name__ == '__main__':
-    apobj = apprise.Apprise()
+    #########################
+    ## args
 
     arg = argparse.ArgumentParser()
     add = arg.add_argument
     evg = os.environ.get
 
     # fmt: off
-    add('-o', '--output', type=Path, default=Path(evg("YK_OUTPUT", '.')),   help='stream output folder')
-    add('-l', '--log',    type=Path, default=Path(evg("YK_LOG", '.')), help='log output folder')
-    add('-d', '--delay',  type=int,  default=int(evg("YK_DELAY", 15)),      help='streams check delay')
+    add('-o', '--output', type=Path, default=Path(evg("YK_OUTPUT", '.')), help='stream output folder')
+    add('-l', '--log',    type=Path, default=Path(evg("YK_LOG", '.')),    help='log output folder')
+    add('-d', '--delay',  type=int,  default=int(evg("YK_DELAY", 15)),    help='streams check delay')
 
-    add('-s', '--src',     nargs='+', default=[], help='files with channels/streams (list1.txt, /root/list2.txt)')
+    add('-s', '--src',     nargs='+', default=[], help='files with channels/streams (list1.toml, /root/list2.toml)')
     add('-p', '--proxy',   nargs='+', default=[], help='proxies (socks5://user:pass@127.0.0.1:1080)')
     add('-a', '--apprise', nargs='+', default=[], help='apprise configs (.yml)')
 
     add('-c', '--cookies', type=Path, default=Path(evg("YK_COOKIES", '')),                    help='path to cookies.txt (netscape format)')
     add('-b', '--bgutil',  type=str,  default=str(evg("YK_BGUTIL", 'http://127.0.0.1:4416')), help='bgutil-ytdlp-pot-provider url')
 
-    add('--dlp',           action='store_true', help='use yt-dlp instead of streamlink')
-    add('--yta',           action='store_true', help='use ytarchive for youtube streams')
-    add('-v', '--verbose', action='store_true', help='verbose output (traces)')
+    add('--dlp', action='store_true', help='use yt-dlp instead of streamlink')
+    add('--yta', action='store_true', help='use ytarchive for youtube streams')
+
+    add('-v', '--debug', action='store_true', help='verbose output')
+    add('--trace',       action='store_true', help='verbosest output')
     # fmt: on
 
     args = arg.parse_args()
     args.output = args.output.resolve()  # subprocess pwd fix
 
+    #########################
+    ## logging
+
+    # logging in dir/%Y-%m-%d.log if --log=<dir>
     if args.log.is_dir():
         args.log = args.log / util.dt_now('%Y-%m-%d.log')
+
+    # logging directly in file if --log=<file.{txt|log}>
     elif args.log.suffix in ['.txt', '.log']:
         args.log = args.log
 
     log.remove()
-    if args.verbose:
-        log.add(sys.stderr, level='TRACE')
-        log.add(args.log, level='TRACE', encoding='utf-8')
+
+    if args.debug or args.trace:
+        lvl = 'TRACE' if args.trace else 'DEBUG'
+        log.add(sys.stderr, level=lvl)
+        log.add(args.log, level=lvl, encoding='utf-8')
     else:
-        guru_fmt = '<level>[{time:YYYY-MM-DD HH:mm:ss}]</level> {message}'
-        log.add(sys.stderr, format=guru_fmt)
-        log.add(args.log, format=guru_fmt, encoding='utf-8')
+        fmt = '<level>[{time:YYYY-MM-DD HH:mm:ss}]</level> {message}'
+        log.add(sys.stderr, level='INFO', format=fmt)
+        log.add(args.log, level='INFO', format=fmt, encoding='utf-8')
+
+    #########################
+    ## envs
 
     for var, target in [
-        ('YK_OUTPUT', args.output),
-        ('YK_LOG', args.log),
-        ('YK_DELAY', args.delay),
-        ('YK_COOKIES', args.cookies),
-        ('YK_BGUTIL', args.bgutil),
-    ]:
-        log.trace(f'{var}: {target}')
-
-    for var, target in [
-        ('YK_ARGS_STREAMLINK', _c_streamlink),
-        ('YK_ARGS_YTDLP', _c_ytdlp),
-        ('YK_ARGS_YTARCHIVE', _c_ytarchive),
+        ('YK_ARGS_STREAMLINK', C_STREAMLINK),
+        ('YK_ARGS_YTDLP', C_YTDLP),
+        ('YK_ARGS_YTARCHIVE', C_YTARCHIVE),
         ('YK_SRC', args.src),
         ('YK_PROXIES', args.proxy),
         ('YK_APPRISE', args.apprise),
@@ -499,10 +605,40 @@ if __name__ == '__main__':
         env = evg(var, '')
         if env:
             target += env.split()
-        log.trace(f'{var}: {target}')
 
-    if not args.src:
+    env_tab = [
+        ['YK_ARGS_STREAMLINK', ' '.join(C_STREAMLINK)],
+        ['YK_ARGS_YTDLP', ' '.join(C_YTDLP)],
+        ['YK_ARGS_YTARCHIVE', ' '.join(C_YTARCHIVE)],
+        ['', ''],
+        ['YK_SRC', args.src],
+        ['YK_PROXIES', args.proxy],
+        ['YK_APPRISE', args.apprise],
+        ['', ''],
+        ['YK_OUTPUT', args.output],
+        ['YK_LOG', args.log],
+        ['YK_DELAY', args.delay],
+        ['YK_COOKIES', args.cookies],
+        ['YK_BGUTIL', args.bgutil],
+    ]
+
+    log.debug(
+        'envs:\n'
+        + tabulate(
+            env_tab,
+            colalign=('right', 'left'),
+            tablefmt='plain',
+            maxcolwidths=[None, 100],
+        )
+    )
+
+    if not args.src or not util.get_files(args.src, exts=['.toml']):
         util.die('no channel lists, add some with "--src" argument')
+
+    #########################
+    ## apprise
+
+    apobj = apprise.Apprise()
 
     if args.apprise:
         cfg = apprise.AppriseConfig()
@@ -510,10 +646,26 @@ if __name__ == '__main__':
             cfg.add(str(file))
         apobj.add(cfg)
 
-    args.output.mkdir(parents=True, exist_ok=True)
+    #########################
+    ## binaries in project folder
 
-    # for binaries in project folder
     pwdir = Path(__file__).resolve().parent
     os.environ['PATH'] = os.pathsep.join([str(pwdir), os.environ['PATH']])
+
+    if args.yta and not shutil.which('ytarchive'):
+        log.warning('ytarchive not found, fallback to yt-dlp')
+        args.yta = False
+        args.dlp = True
+
+    if args.dlp and not shutil.which('ffmpeg'):
+        log.warning('ffmpeg not found, fallback to streamlink')
+        args.yta = False
+        args.dlp = False
+
+    #########################
+    ## main loop
+
+    pc = parse_configs(util.get_files(args.src, exts=['.toml']))
+    log.debug('conf:\n' + pf(pc))
 
     loop()
