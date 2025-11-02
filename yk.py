@@ -358,7 +358,7 @@ def dump_stream(cfg: dict):
         log.error(f'jc error: {str(ex)}')
 
     # remove [live] prefix
-    str_dir.rename(args.output / str_name)
+    str_dir.rename(args.output / Path(util.esc(cfg['folder'])) / str_name)
 
 
 def check_live(url):
@@ -391,7 +391,6 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}):
         try:
             with open(file, 'rb') as f:
                 toml = tomllib.load(f)
-                toml_or = toml.copy()
 
             assert toml  # empty check
 
@@ -471,6 +470,9 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}):
         ## deleting single-use items
 
         if cfg_to_del:
+            with open(file, 'rb') as f:
+                toml_or = tomllib.load(f)
+
             for item, cfg in toml_or.copy().items():
                 if toml[item]['delete'] and toml[item]['url'] == cfg_to_del.get('url'):
                     toml_or.pop(item)
