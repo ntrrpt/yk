@@ -1,4 +1,5 @@
-import os
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import pprint
 import re
 import sys
@@ -31,7 +32,7 @@ yta_q = [
 ]
 
 
-def timedelta_pretty(td: timedelta) -> str:
+def timedelta_pretty(td: timedelta, ms_add=False) -> str:
     total_ms = int(td.total_seconds() * 1000)
     days, rem = divmod(total_ms, 24 * 3600 * 1000)
     hours, rem = divmod(rem, 3600 * 1000)
@@ -40,9 +41,12 @@ def timedelta_pretty(td: timedelta) -> str:
 
     ms_digit = ms // 100
 
+    r = f'{hours:02}:{minutes:02}:{seconds:02}'
+    if ms_add:
+        r += f',{ms_digit}'
     if days:
-        return f'{days}|{hours:02}:{minutes:02}:{seconds:02},{ms_digit}'
-    return f'{hours:02}:{minutes:02}:{seconds:02},{ms_digit}'
+        r = f'{days}|{r}'
+    return r
 
 
 def con(d, c):
@@ -128,21 +132,6 @@ def die(s: str = ''):
     sys.exit(1)
 
 
-def remove_all_exact(path, target):
-    path = Path(path)
-    fst = path.stat()
-
-    with open(path, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-
-    with open(path, 'w', encoding='utf-8') as f:
-        for line in lines:
-            if target not in line.rstrip('\n') or line.startswith('#'):
-                f.write(line)
-
-    os.utime(path, (fst.st_atime, fst.st_mtime))
-
-
 def get_files(
     paths: str | Path | List[str | Path],
     recursive: bool = False,
@@ -199,10 +188,9 @@ def http_cookies(path: Path | str):
 
     c_args = []
 
-    # https://github.com/streamlink/streamlink/issues/3370#issuecomment-846261921
     pattern = re.compile(
         r'(?P<site>.*?)\t(TRUE|FALSE)\t/\t(TRUE|FALSE)\t([0-9]{1,})\t(?P<cookiename>.+)\t(?P<cookievalue>.+)'
-    )
+    )  # https://github.com/streamlink/streamlink/issues/3370#issuecomment-846261921
 
     with open(path, 'r') as f:
         lines = f.readlines()
@@ -220,6 +208,8 @@ def http_cookies(path: Path | str):
 
 
 def _http_cookies(path: Path | str):
+    # less cookies than regex method
+
     path = Path(path)
     if not path.is_file():
         return []

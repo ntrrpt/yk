@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import json
 import sys
 from datetime import timedelta
@@ -115,7 +116,9 @@ def main(path):
         all_time += delta
         delay_time = msg['timestamp']
 
-        timestr = util.timedelta_pretty(timedelta(microseconds=int(all_time)))
+        timestr = util.timedelta_pretty(
+            timedelta(microseconds=int(all_time)), ms_add=True
+        )
         # datetime.datetime.fromtimestamp(history[i]['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
         MESSAGES.append(
