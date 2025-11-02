@@ -660,7 +660,7 @@ if __name__ == '__main__':
         args.yta = False
         args.dlp = True
 
-    if args.dlp and not shutil.which('ffmpeg'):
+    if (args.yta or args.dlp) and not shutil.which('ffmpeg'):
         log.warning('ffmpeg not found, fallback to streamlink')
         args.yta = False
         args.dlp = False
