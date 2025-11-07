@@ -423,12 +423,12 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}):
         ## parsing remaining values
 
         for item, cfg in toml.copy().items():
-            toml[item]['url'] = cfg.get('url') or cfg.get('u')
+            toml[item]['url'] = cfg.get('url') or cfg.get('u') or ''
             toml[item]['folder'] = cfg.get('folder') or cfg.get('f') or ''
             toml[item]['quality'] = cfg.get('quality') or cfg.get('q') or 'best'
             toml[item]['delete'] = bool(cfg.get('delete') or cfg.get('d') or False)
 
-            rgx = cfg.get('regex') or cfg.get('r')
+            rgx = cfg.get('regex') or cfg.get('r') or ''
             toml[item]['regex_title'] = cfg.get('regex_title', rgx)
             toml[item]['regex_desc'] = cfg.get('regex_desc', rgx)
 
