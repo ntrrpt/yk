@@ -82,13 +82,12 @@ C_YTARCHIVE = [
 
 def dump_stream(cfg: dict):
     """
-    cfg_example = {
-        'delete': False,
-        'folder': '',
-        'quality': 'best',
-        'regex': '',
-        'url': 'https://www.youtube.com/channel/test'
-    }
+    cfg_example = {'delete': False,
+                   'folder': '',
+                   'quality': 'best',
+                   'regex_desc': None,
+                   'regex_title': None,
+                   'url': 'https://www.twitch.tv/akirosenthal_hololive'}
     """
 
     global UNLOAD, YTDLP_CONFIG
@@ -136,7 +135,7 @@ def dump_stream(cfg: dict):
         if not re.findall(cfg['regex_title'].lower(), str_title.lower()):
             return
 
-    if cfg['regex_desc']:
+    if cfg['regex_desc'] and str_json.get('description'):
         if not re.findall(cfg['regex_desc'].lower(), str_json['description'].lower()):
             return
 
@@ -165,21 +164,19 @@ def dump_stream(cfg: dict):
 
     # append 'online for HH:MM:SS' to notify
     since_str = ''
-    if str_json.get('release_timestamp'):
-        try:
-            rls_ts = datetime.fromtimestamp(int(str_json['release_timestamp']))
-            delta = datetime.now() - rls_ts
-            since_str = f'\n(online for {util.timedelta_pretty(delta)})'
-        except Exception as e:
-            log.error(f'since | {e}')
+    rls_ts = str_json.get('release_timestamp')
+
+    if rls_ts and (isinstance(rls_ts, int) or rls_ts.isdigit()):
+        rls_dt = datetime.fromtimestamp(int(str_json['release_timestamp']))
+        delta = datetime.now() - rls_dt
+        since_str = f'\n(online for {util.timedelta_pretty(delta)})'
 
     # notify and log
     apobj.notify(title=f'[ONLINE] {str_user}', body=str_title + since_str)
     log.success(f'[ONLINE] ({str_user} - {str_title + since_str.replace("\n", " ")}')
 
     # streamlink cmd (default)
-    c = C_STREAMLINK.copy()
-    c += util.http_cookies(args.cookies)
+    c = C_STREAMLINK.copy() + util.http_cookies(args.cookies)
     c += [
         '--url', cfg['url'],
         '--output', str_blank + '.ts',
@@ -191,8 +188,7 @@ def dump_stream(cfg: dict):
 
     # yt-dlp cmd
     if args.dlp:
-        c = C_YTDLP.copy()
-        c += ['-o', str_blank + '.mp4', cfg['url']]
+        c = C_YTDLP.copy() + ['-o', str_blank + '.mp4', cfg['url']]
 
         if 'youtube' in str_json['extractor']:
             c.insert(1, '--live-from-start')
@@ -207,12 +203,7 @@ def dump_stream(cfg: dict):
 
     # ytarchive cmd
     if args.yta and 'youtube' in str_json['extractor']:
-        c = C_YTARCHIVE.copy()
-        c += [
-            '--output', str_blank,
-            cfg['url'],
-            cfg['quality'],
-        ]  # fmt: skip
+        c = C_YTARCHIVE.copy() + ['--output', str_blank, cfg['url'], cfg['quality']]  # fmt: skip
 
         if str_proxy:
             c.insert(1, '--proxy')
@@ -229,7 +220,7 @@ def dump_stream(cfg: dict):
             r.raise_for_status()
 
             bg = r.json()
-            if any(['server_uptime' not in bg, 'version' not in bg]):
+            if 'server_uptime' not in bg or 'version' not in bg:
                 raise Exception(f'invalid /ping: {bg}')
 
             r = requests.post(
@@ -416,6 +407,9 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}):
         ## finding single-use items via '@' prefix in key
 
         for item in toml.copy().keys():
+            if toml[item].get('url') or toml[item].get('u'):
+                continue
+
             if is_url(item):
                 # key is url
                 toml[item]['url'] = item
@@ -429,13 +423,12 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}):
         ## parsing remaining values
 
         for item, cfg in toml.copy().items():
-            toml[item]['url'] = cfg.get('url', cfg.get('u', ''))
-            toml[item]['folder'] = cfg.get('folder', cfg.get('f', ''))
+            toml[item]['url'] = cfg.get('url') or cfg.get('u')
+            toml[item]['folder'] = cfg.get('folder') or cfg.get('f') or ''
+            toml[item]['quality'] = cfg.get('quality') or cfg.get('q') or 'best'
+            toml[item]['delete'] = bool(cfg.get('delete') or cfg.get('d') or False)
 
-            toml[item]['quality'] = cfg.get('quality', cfg.get('q', 'best'))
-            toml[item]['delete'] = bool(cfg.get('delete', cfg.get('d', False)))
-
-            rgx = cfg.get('regex', cfg.get('r', ''))
+            rgx = cfg.get('regex') or cfg.get('r')
             toml[item]['regex_title'] = cfg.get('regex_title', rgx)
             toml[item]['regex_desc'] = cfg.get('regex_desc', rgx)
 
@@ -579,10 +572,6 @@ if __name__ == '__main__':
     if args.log.is_dir():
         args.log = args.log / util.dt_now('%Y-%m-%d.log')
 
-    # logging directly in file if --log=<file.{txt|log}>
-    elif args.log.suffix in ['.txt', '.log']:
-        args.log = args.log
-
     log.remove()
 
     if args.debug or args.trace:
@@ -613,11 +602,11 @@ if __name__ == '__main__':
         ['YK_ARGS_STREAMLINK', ' '.join(C_STREAMLINK)],
         ['YK_ARGS_YTDLP', ' '.join(C_YTDLP)],
         ['YK_ARGS_YTARCHIVE', ' '.join(C_YTARCHIVE)],
-        ['', ''],
+        ['-----------------', ' '],
         ['YK_SRC', args.src],
         ['YK_PROXIES', args.proxy],
         ['YK_APPRISE', args.apprise],
-        ['', ''],
+        ['-----------------', ' '],
         ['YK_OUTPUT', args.output],
         ['YK_LOG', args.log],
         ['YK_DELAY', args.delay],
