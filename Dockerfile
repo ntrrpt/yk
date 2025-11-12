@@ -13,7 +13,7 @@ ENV YK_OUTPUT=/out
 ENV YK_LOG=/out
 ENV YK_SRC=/src
 
-RUN apk add --no-cache --progress bash go git curl ffmpeg build-base linux-headers 
+RUN apk add --no-cache --progress quickjs bash go git curl ffmpeg build-base linux-headers 
 
 RUN bash -c 'git clone https://github.com/Kethsar/ytarchive.git /tmp/ytarchive \
     && go build -C /tmp/ytarchive -o /usr/local/bin/ytarchive -v \

@@ -63,6 +63,7 @@ C_YTDLP = [
     "yt-dlp",
     "--verbose",
     "--ignore-config",
+    "--js-runtimes", "quickjs",
     "--merge-output-format", "mp4",
     "--retries", "30",
     "-N", "3"
