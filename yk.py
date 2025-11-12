@@ -64,6 +64,7 @@ C_YTDLP = [
     "--verbose",
     "--ignore-config",
     "--js-runtimes", "quickjs",
+    "--remote-components", "ejs:github",
     "--merge-output-format", "mp4",
     "--retries", "30",
     "-N", "3"
