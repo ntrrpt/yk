@@ -69,10 +69,7 @@ def main(path):
             log(f'{i}: no message ')
             continue
 
-        log(
-            f'm: {len(CHAT)}/{i}, u: {len(USERS)}',
-            end='\r',
-        )
+        log(f'm: {len(CHAT)}/{i}, u: {len(USERS)}', end='\r')
 
         # badges (moderator, subscriber, etc.)
         icon = ''
@@ -81,7 +78,7 @@ def main(path):
         if 'badges' in msg['author']:
             badges = ', '.join(
                 [
-                    badge.get('title', badge.get('name', '__NULL__'))
+                    badge.get('title') or badge.get('name') or '__NULL__'
                     for badge in msg['author']['badges']
                 ]
             )
@@ -96,10 +93,7 @@ def main(path):
                 icon += target
 
         if SITE == 'yt':
-            username = msg['author'].get('name', '__NULL__')
-
-            # FIXME: temporary (?) fix for chat_downloader
-            username = username.removeprefix('@')
+            username = msg['author'].get('name', '__NULL__').removeprefix('@')
         else:
             username = msg['author'].get('display_name', '__NULL__')
 
