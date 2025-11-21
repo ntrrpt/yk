@@ -42,10 +42,6 @@ def main(path):
 
     types = list(set([x['action_type'] for x in CHAT]))
 
-    if len(types) > 1:
-        m = f'{conv}: new types: {types}'
-        util.append(conv, m)
-        log(m)
     if 'text_message' in types:
         SITE = 'tw'
         LINK = 'https://www.twitch.tv/'
@@ -57,6 +53,12 @@ def main(path):
         util.append(conv, m)
         log(m)
         return
+
+    util.write(conv, '')
+    if len(types) > 1:
+        m = f'{conv}: new types: {types}'
+        util.append(conv, m)
+        log(m)
 
     ##################################################################
     #  adding messages and users
@@ -165,7 +167,7 @@ def main(path):
     ]:
         USERS_TAB = sorted(USERS_TAB, key=lambda x: 0 if util.con(var, x[0]) else 1)
 
-    util.write(
+    util.append(
         conv,
         tabulate(
             [[len(CHAT), len(USERS_TAB)]],
