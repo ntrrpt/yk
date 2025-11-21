@@ -416,9 +416,14 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}):
                 # key is url
                 toml[item]['url'] = item
 
-            elif is_url(item.removeprefix('@')):
-                # key is @url, removing
+            elif is_url(item.removeprefix('!')):
+                # !url => removing
                 toml[item]['delete'] = True
+                toml[item]['url'] = item.removeprefix('!')
+
+            elif is_url(item.removeprefix('@')):
+                # @url => healthcheck
+                toml[item]['health'] = True
                 toml[item]['url'] = item.removeprefix('@')
 
         #########################
@@ -429,6 +434,7 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}):
             toml[item]['folder'] = cfg.get('folder') or cfg.get('f') or ''
             toml[item]['quality'] = cfg.get('quality') or cfg.get('q') or 'best'
             toml[item]['delete'] = bool(cfg.get('delete') or cfg.get('d') or False)
+            toml[item]['health'] = bool(cfg.get('health') or False)
 
             rgx = cfg.get('regex') or cfg.get('r') or ''
             toml[item]['regex_title'] = cfg.get('regex_title', rgx)
@@ -458,7 +464,7 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}):
                 log.error(
                     f"{file}:{item}: {toml[item]['quality']!r} not supported in ytarchive, fallback to 'best' for now"
                 )
-                log.error(f'choose something from {", ".join(util.yta_q)!r}, ')
+                log.error(f'choose something from {", ".join(util.yta_q)!r}')
                 toml[item]['quality'] = 'best'
 
         #########################
@@ -510,7 +516,14 @@ def loop():
                     log.info('list updated!')
                     break
 
-                if cfg['url'] not in ONLINE and check_live(cfg['url']):
+                if cfg['health']:
+                    if not check_live(cfg['url']):
+                        log.error(f'HEALTHCHECK FAILED: {cfg["url"]}')
+                        apobj.notify(title='[HEALTHCHECK FAILED]', body=cfg['url'])
+                    else:
+                        log.debug(f'health ok: {ch}')
+
+                elif cfg['url'] not in ONLINE and check_live(cfg['url']):
                     log.debug(f'{ch!r} is online:\n{pf(cfg)}')
 
                     if cfg['delete']:
@@ -604,11 +617,11 @@ if __name__ == '__main__':
         ['YK_ARGS_STREAMLINK', ' '.join(C_STREAMLINK)],
         ['YK_ARGS_YTDLP', ' '.join(C_YTDLP)],
         ['YK_ARGS_YTARCHIVE', ' '.join(C_YTARCHIVE)],
-        ['-----------------', ' '],
+        ['------------------', ' '],
         ['YK_SRC', args.src],
         ['YK_PROXIES', args.proxy],
         ['YK_APPRISE', args.apprise],
-        ['-----------------', ' '],
+        ['------------------', ' '],
         ['YK_OUTPUT', args.output],
         ['YK_LOG', args.log],
         ['YK_DELAY', args.delay],
@@ -625,9 +638,6 @@ if __name__ == '__main__':
             maxcolwidths=[None, 100],
         )
     )
-
-    if not args.src or not util.get_files(args.src, exts=['.toml']):
-        util.die('no channel lists, add some with "--src" argument')
 
     #########################
     ## apprise
@@ -659,7 +669,17 @@ if __name__ == '__main__':
     #########################
     ## main loop
 
-    pc = parse_configs(util.get_files(args.src, exts=['.toml']))
+    if not args.src:
+        util.die('no channel lists, add some with "--src" argument')
+
+    gf = util.get_files(args.src, exts=['.toml'])
+    if not gf:
+        util.die('no .toml files')
+
+    pc = parse_configs(gf)
+    if not pc:
+        util.die('no channels in configs')
+
     log.debug('conf:\n' + pf(pc))
 
     loop()

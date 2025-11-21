@@ -1,7 +1,7 @@
 # title can be used instead of 'url' item
 ['https://www.youtube.com/channel/UCsUj0dszADCGbF3gNrQEuSQ']
 q = 'best'
-r = 'archive' # 'r' or 'regex' means 'regex_title' and 'regex_desc'
+r = 'archive' # 'r' or 'regex' => 'regex_title' and 'regex_desc'
 
 ['Ceres Fauna']
 u = 'https://www.youtube.com/channel/UCO_aKKYxn4tvrqPjcTzZ6EQ'
@@ -13,14 +13,17 @@ url = 'https://www.youtube.com/channel/UC3n5uGu18FoCy23ggWWp8tA' # u
 quality = '360p'
 delete = true # will remove 'Nanashi Mumei' if she is streaming
 
-# Hakos Baelz
-['@https://www.youtube.com/channel/UCgmPnx-EEeOrZSg5Tiw7ZRQ']
-# will remove 'Hakos Baelz' too, because url starts with '@'
+# will be removed too, because url starts with '!'
+['!https://www.youtube.com/channel/UCgmPnx-EEeOrZSg5Tiw7ZRQ']
 f = 'alive'
-q = 'worst' # not work in ytarchive, will fallback to 'best'
+q = 'worst' # ‘worst’ does not work in ytarchive, will fallback to ‘best’
 
 ['Ouro Kronii'] 
 folder = 'alive' # f
 u = 'https://www.youtube.com/channel/UCmbs8T6MWqUHP1tIQvSgKrg'
 
-# all comments will be destroyed if config is overwritten due to channel deletion, sorry T_T 
+# healthcheck, will inform you if the 'check_live' was failed
+# useful for checking if yt cookies are rotated
+['@https://www.youtube.com/watch?v=jfKfPfyJRdk'] 
+
+# all comments will be destroyed if config is overwritten with 'delete' func
