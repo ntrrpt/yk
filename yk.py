@@ -38,7 +38,8 @@ UNLOAD = False
 YTDLP_CONFIG = {
     'quiet': True,
     'playlist_items': 0,
-    'noplaylist': True
+    'noplaylist': True,
+    'remote_components': ['ejs:github']
 }  # fmt: skip
 
 C_STREAMLINK = [
@@ -63,7 +64,6 @@ C_YTDLP = [
     "yt-dlp",
     "--verbose",
     "--ignore-config",
-    "--js-runtimes", "quickjs",
     "--remote-components", "ejs:github",
     "--merge-output-format", "mp4",
     "--retries", "30",
@@ -102,6 +102,11 @@ def dump_stream(cfg: dict):
 
     if args.cookies.is_file():
         YTDLP_CONFIG['cookiefile'] = args.cookies
+
+    if args.bgutil != 'http://127.0.0.1:4416':
+        YTDLP_CONFIG['extractor_args'] = {
+            'youtubepot-bgutilhttp': {'base_url': [args.bgutil]}
+        }
 
     # += '/live' for channel links
     if 'youtube' in cfg['url'] and 'watch?v=' not in cfg['url']:
@@ -202,6 +207,10 @@ def dump_stream(cfg: dict):
         if args.cookies.is_file():
             c.insert(1, '--cookies')
             c.insert(2, str(args.cookies))
+
+        if args.bgutil != 'http://127.0.0.1:4416':
+            c.insert(1, '--extractor-args')
+            c.insert(2, f'youtubepot-bgutilhttp:base_url={args.bgutil}')
 
     # ytarchive cmd
     if args.yta and 'youtube' in str_json['extractor']:
