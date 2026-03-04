@@ -18,7 +18,7 @@ dependencies = [
     "tabulate[widechars]>=0.9.0",
     "tomli-w>=1.2.0",
     "validators>=0.35.0",
-    "yt-dlp>=2026.02.21",
+    "yt-dlp>=2026.03.03",
 ]
 
 [dependency-groups]
