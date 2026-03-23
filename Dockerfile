@@ -15,8 +15,8 @@ ENV YK_SRC=/src
 
 RUN apk add --no-cache --progress deno bash go git curl ffmpeg build-base linux-headers 
 
-RUN bash -c 'git clone https://github.com/Kethsar/ytarchive.git /tmp/ytarchive \
-    && go build -C /tmp/ytarchive -o /usr/local/bin/ytarchive -v \
+RUN bash -c 'git clone --revision=742674da1fa618365074de714b9517cc79d1bb38 https://github.com/dreammu/ytarchive /tmp/ytarchive \
+    && go build -C /tmp/ytarchive -ldflags="-s -w" -o /usr/local/bin/ytarchive -v \
     && rm -rf /tmp/ytarchive /root/go /root/.cache/go-build'
 
 RUN bash -c 'mkdir -p /app \ 
