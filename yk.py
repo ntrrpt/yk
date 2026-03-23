@@ -43,7 +43,6 @@ YTDLP_CONFIG = {
 }  # fmt: skip
 
 C_STREAMLINK = [
-    "streamlink",
     "--fs-safe-rules", "Windows",
     "--twitch-disable-ads",
     "--hls-live-restart",
@@ -56,12 +55,10 @@ C_STREAMLINK = [
     "--hls-live-edge", "5",
     "--stream-timeout", "120",
     "--ringbuffer-size", "64M",
-    "--loglevel", "trace",
-    "--twitch-disable-hosting"
+    "--loglevel", "trace"
 ]  # fmt: skip
 
 C_YTDLP = [
-    "yt-dlp",
     "--verbose",
     "--ignore-config",
     "--remote-components", "ejs:github",
@@ -71,7 +68,6 @@ C_YTDLP = [
 ]  # fmt: skip
 
 C_YTARCHIVE = [
-    "ytarchive",
     "--threads", "3",
     "--trace",
     "--no-frag-files",
@@ -183,8 +179,7 @@ def dump_stream(cfg: dict):
     log.success(f'[ONLINE] ({str_user} - {str_title + since_str.replace("\n", " ")}')
 
     # streamlink cmd (default)
-    c = C_STREAMLINK.copy() + util.http_cookies(args.cookies)
-    c += [
+    c = ['streamlink'] + C_STREAMLINK.copy() + [
         '--url', cfg['url'],
         '--output', str_blank + '.ts',
         '--default-stream', cfg['quality']
@@ -193,81 +188,91 @@ def dump_stream(cfg: dict):
     if str_proxy:
         c += ['--http-proxy', str_proxy]
 
+    if args.cookies:
+        c += ['--http-cookies-file', str(args.cookies)]
+
     # yt-dlp cmd
     if args.dlp:
-        c = C_YTDLP.copy() + ['-o', str_blank + '.mp4', cfg['url']]
+        c = ['yt-dlp'] + C_YTDLP.copy()
 
         if 'youtube' in str_json['extractor']:
-            c.insert(1, '--live-from-start')
+            c += ['--live-from-start']
 
         if str_proxy:
-            c.insert(1, '--proxy')
-            c.insert(2, str_proxy)
+            c += ['--proxy', str_proxy]
 
         if args.cookies.is_file():
-            c.insert(1, '--cookies')
-            c.insert(2, str(args.cookies))
+            c += ['--cookies', str(args.cookies)]
 
         if args.bgutil != 'http://127.0.0.1:4416':
-            c.insert(1, '--extractor-args')
-            c.insert(2, f'youtubepot-bgutilhttp:base_url={args.bgutil}')
+            c += [
+                '--extractor-args',
+                f'youtubepot-bgutilhttp:base_url={args.bgutil}',
+            ]
+
+        c += ['-o', str_blank + '.mp4', cfg['url']]
 
     # ytarchive cmd
     if args.yta and 'youtube' in str_json['extractor']:
-        c = C_YTARCHIVE.copy() + ['--output', str_blank, cfg['url'], cfg['quality']]  # fmt: skip
+        c = ['ytarchive'] + C_YTARCHIVE.copy()  # fmt: skip
 
         if str_proxy:
-            c.insert(1, '--proxy')
-            c.insert(2, str_proxy)
+            c += ['--proxy', str_proxy]
 
         if args.cookies.is_file():
-            c.insert(1, '--cookies')
-            c.insert(2, str(args.cookies))
+            c += ['--cookies', str(args.cookies)]
 
-        # append potoken to ytarchive cmd
+        # appends potoken to ytarchive cmd
         # need 'https://github.com/Brainicism/bgutil-ytdlp-pot-provider/'
-        try:
-            r = requests.get(args.bgutil + '/ping', timeout=10)
-            r.raise_for_status()
+        # disabled due to 'https://github.com/dreammu/ytarchive' fork
+        if os.environ.get('YK_FORCE_YTARCHIVE_POTOKEN'):
+            try:
+                r = requests.get(args.bgutil + '/ping', timeout=10)
+                r.raise_for_status()
 
-            bg = r.json()
-            if 'server_uptime' not in bg or 'version' not in bg:
-                raise Exception(f'invalid /ping: {bg}')
+                bg = r.json()
+                if 'server_uptime' not in bg or 'version' not in bg:
+                    raise Exception(f'invalid /ping: {bg}')
 
-            r = requests.post(
-                args.bgutil + '/get_pot',
-                data={'proxy': str_proxy} if str_proxy else {},
-                timeout=60,
-            )
-            r.raise_for_status()
+                r = requests.post(
+                    args.bgutil + '/get_pot',
+                    data={'proxy': str_proxy} if str_proxy else {},
+                    timeout=60,
+                )
+                r.raise_for_status()
 
-            bg = r.json()
-            if 'poToken' not in bg:
-                raise Exception(f'invalid /get_pot: {bg}')
+                bg = r.json()
+                if 'poToken' not in bg:
+                    raise Exception(f'invalid /get_pot: {bg}')
 
-            log.debug(f'potoken: {bg["poToken"]}')
+                log.debug(f'potoken: {bg["poToken"]}')
 
-            c.insert(1, '--potoken')
-            c.insert(2, bg['poToken'])
+                c += ['--potoken', bg['poToken']]
 
-        except Exception as ex:
-            log.warning(f'bgutil | {str(ex)}')
+            except Exception as ex:
+                log.warning(f'bgutil | {str(ex)}')
+
+        if args.bgutil != 'http://127.0.0.1:4416':
+            c += [
+                '--ytdlp-opts',
+                f'--extractor-args youtubepot-bgutilhttp:base_url={args.bgutil}',
+            ]
+
+        c += ['--output', str_blank, cfg['url'], cfg['quality']]
 
     # chat_downloader cmd
     c_chat = [
-        'chat_downloader', 
         '--output', str_blank + '.json',
         '--max_attempts', '99999999', 
-        str_json['webpage_url']
     ]  # fmt: skip
 
-    if args.cookies.is_file():
-        c_chat.insert(1, '--cookies')
-        c_chat.insert(2, str(args.cookies))
-
     if str_proxy:
-        c_chat.insert(1, '--proxy')
-        c_chat.insert(2, str_proxy)
+        c_chat += ['--proxy', str_proxy]
+
+    if args.cookies.is_file():
+        c_chat += ['--cookies', str(args.cookies)]
+
+    c_chat = ['chat_downloader'] + c_chat + [str_json['webpage_url']]
 
     log.debug(' '.join(c))
     log.debug(' '.join(c_chat))
@@ -367,18 +372,20 @@ def check_live(url):
     if 'youtube' in url and 'watch?v=' not in url:
         url += '/live'
 
-    c = ['streamlink', '--twitch-disable-hosting', '--url', url]
-    c += util.http_cookies(args.cookies)
+    c = ['streamlink', '--loglevel', 'trace', '--url', url]
 
     if args.proxy:
         c += ['--http-proxy', random.choice(args.proxy)]
 
-    with subprocess.Popen(c, stdout=subprocess.PIPE) as proc:
-        while True:
-            time.sleep(0.1)
-            p = proc.poll()
-            if p is not None:
-                return p == 0
+    if args.cookies:
+        c += ['--http-cookies-file', str(args.cookies)]
+
+    with subprocess.Popen(
+        c, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    ) as proc:
+        stdout, stderr = proc.communicate()
+        log.trace(f'{url}:\n' + stdout)
+        return proc.poll() == 0
 
 
 def parse_configs(files: list = [], cfg_to_del: dict = {}):
