@@ -381,7 +381,7 @@ wheels = [
 
 [[package]]
 name = "streamlink"
-version = "8.1.2"
+version = "8.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -396,11 +396,11 @@ dependencies = [
     { name = "urllib3" },
     { name = "websocket-client" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7a/89/ea3baa9d0c2d564412be15ef5e799a56bf2a0068b27197e5e4c312ba13f5/streamlink-8.1.2.tar.gz", hash = "sha256:d08099fa1b169bad4a991d31b2ab89f04ba08b1319ed1f5bd0ead8547d4c5ad3", size = 823590, upload-time = "2026-01-18T12:21:53.28Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ba/6c/2693892f73a1f27642297929dbb4a6e35a3795314c0d084f3273cc492b71/streamlink-8.2.1.tar.gz", hash = "sha256:afa26582cabf343f49733d79e2bc9a5bbe90aec7dbb246ec5f97796499c637ee", size = 832283, upload-time = "2026-03-05T12:54:17.012Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/8f/124e4db6bbf8fe3ab9bfe4dbd029f29211629c0f1733da2695576917c226/streamlink-8.1.2-py3-none-any.whl", hash = "sha256:2355cffcdbe60e8270144b5191a20b2ab195bbb9150b453334a23b829d1d75c7", size = 556372, upload-time = "2026-01-18T12:21:47.062Z" },
-    { url = "https://files.pythonhosted.org/packages/c9/11/63a8c6b2b733d55189888504530865f68a3b69ebde7b78138d680e56bb45/streamlink-8.1.2-py3-none-win32.whl", hash = "sha256:c5aba06f24bb7a6a261ec409a301b5d8564ea865933f08001533067e5e40529c", size = 556386, upload-time = "2026-01-18T12:21:49.505Z" },
-    { url = "https://files.pythonhosted.org/packages/ed/5a/81a8bbe0d8755154979a4cd56f2b03da67ddd2db7ab9e14145a35cf0eb72/streamlink-8.1.2-py3-none-win_amd64.whl", hash = "sha256:86043d339a1b9b9b49f36ed26cdd421d226a021f06c9434e2177bfc6caf420d5", size = 556389, upload-time = "2026-01-18T12:21:51.385Z" },
+    { url = "https://files.pythonhosted.org/packages/68/7e/d54572c5a810f3632d43fa14d0c1dcb08d138c279b952110a2a34ae0d8c5/streamlink-8.2.1-py3-none-any.whl", hash = "sha256:3c6b3098010658fe7e474b22aeb4b9435f11322ef9a90da0917ee2390bc29196", size = 560561, upload-time = "2026-03-05T12:54:12.289Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/94/97e4501d097e34194da9347313af7dce5d4555c603295f83d1116e069407/streamlink-8.2.1-py3-none-win32.whl", hash = "sha256:3d0081af98ac361e2f9ea50a3adaa1899b758b5cfa165ff1a20ec59ab4bedbc0", size = 560570, upload-time = "2026-03-05T12:54:14.059Z" },
+    { url = "https://files.pythonhosted.org/packages/aa/c7/1fb520e380b00cafb16e4e5b23e14951079164b00a1752c20a752446793a/streamlink-8.2.1-py3-none-win_amd64.whl", hash = "sha256:85e9d59c694573ac09c42b597d4cdb480fef52b0e176acf8dc84eedb0ec0712e", size = 560577, upload-time = "2026-03-05T12:54:15.498Z" },
 ]
 
 [[package]]
@@ -545,11 +545,11 @@ requires-dist = [
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "stopwatch-py", specifier = ">=2.0.1" },
-    { name = "streamlink", specifier = ">=8.1.2" },
+    { name = "streamlink", specifier = ">=8.2.1" },
     { name = "tabulate", extras = ["widechars"], specifier = ">=0.9.0" },
     { name = "tomli-w", specifier = ">=1.2.0" },
     { name = "validators", specifier = ">=0.35.0" },
-    { name = "yt-dlp", specifier = ">=2026.1.29" },
+    { name = "yt-dlp", specifier = ">=2026.3.17" },
 ]
 
 [package.metadata.requires-dev]
@@ -557,9 +557,9 @@ dev = [{ name = "ruff" }]
 
 [[package]]
 name = "yt-dlp"
-version = "2026.2.4"
+version = "2026.3.17"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/16/be/8e099f3f34bac6851490525fb1a8b62d525a95fcb5af082e8c52ba884fb5/yt_dlp-2026.2.4.tar.gz", hash = "sha256:24733ef081116f29d8ee6eae7a48127101e6c56eb7aa228dd604a60654760022", size = 3100305, upload-time = "2026-02-04T00:49:27.043Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8b/34/7c6b4e3f89cb6416d2cd7ab6dab141a1df97ab0fb22d15816db2c92148c9/yt_dlp-2026.3.17.tar.gz", hash = "sha256:ba7aa31d533f1ffccfe70e421596d7ca8ff0bf1398dc6bb658b7d9dec057d2c9", size = 3119221, upload-time = "2026-03-17T23:43:00.244Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/96/38/b17cbeaf6712a4c1b97f7f9ec3a55f3a8ddee678cc88742af47dca0315b7/yt_dlp-2026.2.4-py3-none-any.whl", hash = "sha256:d6ea83257e8127a0097b1d37ee36201f99a292067e4616b2e5d51ab153b3dbb9", size = 3299165, upload-time = "2026-02-04T00:49:25.31Z" },
+    { url = "https://files.pythonhosted.org/packages/cd/13/5093bcb954878e50f7217fd2ab94282b53934022e4e4a03265582da83bf5/yt_dlp-2026.3.17-py3-none-any.whl", hash = "sha256:32992db94303a8a5d211a183f2174834fe7f8c29d83ed2e7a324eae97a8f26d8", size = 3315134, upload-time = "2026-03-17T23:42:57.863Z" },
 ]
