@@ -181,7 +181,7 @@ def yt_dump_thumb(path: Path | str, video_id: str, proxy: str | None = None):
             return url
 
 
-def http_cookies(path: Path | str):
+def _http_cookies_regex(path: Path | str):
     path = Path(path)
     if not path.is_file():
         return []
@@ -207,7 +207,7 @@ def http_cookies(path: Path | str):
     return c_args
 
 
-def _http_cookies(path: Path | str):
+def _http_cookies_jar(path: Path | str):
     # less cookies than regex method
 
     path = Path(path)
