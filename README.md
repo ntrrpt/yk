@@ -2,7 +2,7 @@
 ```
 curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/ntrrpt/yk.git && cd yk
-uv run yk.py -v -d 15 -s lists/tw.toml
+uv run -m yk -v -d 15 -s lists/tw.toml
 ```
 
 ## via docker compose:

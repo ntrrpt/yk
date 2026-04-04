@@ -1,23 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import json
-import sys
 from datetime import timedelta
 from pathlib import Path
 
 from tabulate import tabulate
 
-import util
-
-progress = False
+from .util import append, con, str_cut, timedelta_pretty, write
 
 
-def log(string, end='\n'):
-    if progress:
-        print(string, end=end)
+def conv(path, logging=False):
+    def log(string, end='\n'):
+        if logging:
+            print(string, end=end)
 
-
-def main(path):
     ##################################################################
     #  init
 
@@ -50,14 +46,14 @@ def main(path):
         LINK = 'https://www.youtube.com/channel/'
     if not SITE:
         m = f'{conv}: yt/tw not found in json'
-        util.append(conv, m)
+        append(conv, m)
         log(m)
         return
 
-    util.write(conv, '')
+    write(conv, '')
     if len(types) > 1:
         m = f'{conv}: new types: {types}'
-        util.append(conv, m)
+        append(conv, m)
         log(m)
 
     ##################################################################
@@ -91,7 +87,7 @@ def main(path):
             (['Moderator', 'Модератор'], 'M'),
             (['Owner', 'Владелец'], 'O'),
         ]:
-            if util.con(var, badges):
+            if con(var, badges):
                 icon += target
 
         if SITE == 'yt':
@@ -112,16 +108,14 @@ def main(path):
         all_time += delta
         delay_time = msg['timestamp']
 
-        timestr = util.timedelta_pretty(
-            timedelta(microseconds=int(all_time)), ms_add=True
-        )
+        timestr = timedelta_pretty(timedelta(microseconds=int(all_time)), ms_add=True)
         # datetime.datetime.fromtimestamp(history[i]['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
         MESSAGES.append(
             [
                 timestr,
                 icon,
-                util.str_cut(username, 20, '~1'),
+                str_cut(username, 20, '~1'),
                 msg['message'] or '__NULL__',
             ]
         )
@@ -131,7 +125,7 @@ def main(path):
         if uid not in USERS:
             USERS[uid] = {
                 'badges': badges,
-                'username': util.str_cut(username, 30, '~1'),
+                'username': str_cut(username, 30, '~1'),
                 'msg_count': 1,
             }
         else:
@@ -165,9 +159,9 @@ def main(path):
         (['Moderator', 'Модератор']),
         (['Owner', 'Владелец']),
     ]:
-        USERS_TAB = sorted(USERS_TAB, key=lambda x: 0 if util.con(var, x[0]) else 1)
+        USERS_TAB = sorted(USERS_TAB, key=lambda x: 0 if con(var, x[0]) else 1)
 
-    util.append(
+    append(
         conv,
         tabulate(
             [[len(CHAT), len(USERS_TAB)]],
@@ -177,7 +171,7 @@ def main(path):
         ),
     )
 
-    util.append(
+    append(
         conv,
         tabulate(
             USERS_TAB,
@@ -187,7 +181,7 @@ def main(path):
         ),
     )
 
-    util.append(
+    append(
         conv,
         tabulate(
             MESSAGES,
@@ -195,9 +189,3 @@ def main(path):
             colalign=('left', 'right', 'right', 'left'),
         ),
     )
-
-
-if __name__ == '__main__':
-    progress = True
-    for i in range(1, len(sys.argv)):
-        main(sys.argv[i])

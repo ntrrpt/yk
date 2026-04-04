@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import pprint
+import json
 import re
-import sys
 import unicodedata
 from datetime import datetime, timedelta
-from http.cookiejar import MozillaCookieJar
 from pathlib import Path
 from typing import List
 
+import apprise
 import requests
 from loguru import logger as log
 
-hq_blank = 'https://i.ytimg.com/vi/%s/hqdefault.jpg'
-max_blank = 'https://i.ytimg.com/vi/%s/maxresdefault.jpg'
-yta_q = [
+HQ_BLANK = 'https://i.ytimg.com/vi/%s/hqdefault.jpg'
+MAX_BLANK = 'https://i.ytimg.com/vi/%s/maxresdefault.jpg'
+YTA_Q = [
     'audio_only',
     '144p',
     '240p',
@@ -30,6 +29,18 @@ yta_q = [
     '2160p60',
     'best',
 ]
+
+
+def get_apobj(path=[]):
+    apobj = apprise.Apprise()
+
+    cfg = apprise.AppriseConfig()
+    for file in get_files(path, exts=['.yml']):
+        cfg.add(str(file))
+
+    apobj.add(cfg)
+
+    return apobj
 
 
 def timedelta_pretty(td: timedelta, ms_add=False) -> str:
@@ -113,23 +124,18 @@ def delete(path: Path | str):
 
 def pw(path: Path | str, data: str, end: str = '\n'):
     path = Path(path)
-    s = str(pprint.pformat(str(data)))
+    s = pf(data)
     write(path, s, end)
     log.trace(f'{path} pwd')
 
 
 def pp(data: str):
-    print(pprint.pformat(str(data)))
+    f = json.dumps(data, indent=4, ensure_ascii=False)
+    print(f)
 
 
 def pf(data: str):
-    return str(pprint.pformat(str(data)))
-
-
-def die(s: str = ''):
-    if s:
-        log.critical(str(s))
-    sys.exit(1)
+    return str(json.dumps(data, indent=4, ensure_ascii=False))
 
 
 def get_files(
@@ -166,7 +172,7 @@ def yt_dump_thumb(path: Path | str, video_id: str, proxy: str | None = None):
     path = Path(path)
     proxies = {'http': proxy, 'https': proxy} if proxy else None
 
-    for blank in [max_blank, hq_blank]:
+    for blank in [MAX_BLANK, HQ_BLANK]:
         url = blank % video_id
         try:
             with requests.get(url, stream=True, proxies=proxies) as request:
@@ -181,6 +187,7 @@ def yt_dump_thumb(path: Path | str, video_id: str, proxy: str | None = None):
             return url
 
 
+# TODO: ressurect
 def _http_cookies_regex(path: Path | str):
     path = Path(path)
     if not path.is_file():
@@ -209,6 +216,8 @@ def _http_cookies_regex(path: Path | str):
 
 def _http_cookies_jar(path: Path | str):
     # less cookies than regex method
+
+    from http.cookiejar import MozillaCookieJar
 
     path = Path(path)
     if not path.is_file():

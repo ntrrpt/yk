@@ -1,8 +1,11 @@
 FROM ghcr.io/astral-sh/uv:python3.13-alpine
 
+#TODO: strip python packages
+
 # uv envs
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_NO_PROGRESS=1
+ENV UV_NO_SYNC=1
 ENV UV_NO_DEV=1
 ENV NO_COLOR=1
 
@@ -29,4 +32,4 @@ COPY pyproject.toml uv.lock /app
 RUN uv sync
 COPY . /app
 
-ENTRYPOINT ["uv", "run", "--no-sync", "yk.py"]
+ENTRYPOINT ["uv", "run", "-m", "yk"]

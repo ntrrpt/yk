@@ -2,16 +2,14 @@ services:
   yt:
     container_name: yt
 
-    image: yk:latest
+    image: yk-custom
     restart: unless-stopped
     network_mode: host
     tty: true
-    stdin_open: true
-    user: "1000"
 
     environment:
-      # YK_PROXIES: socks5://127.0.0.1:1080
-      YK_DELAY: 300 # big delay for yt
+      YK_PROXIES: socks5://127.0.0.1:1080
+      YK_DELAY: 300 # big delay for youtube
     build:
       context: https://github.com/ntrrpt/yk.git
     volumes:
@@ -23,16 +21,14 @@ services:
       # po token extractor plugin 
       # - ./bgutil-ytdlp-pot-provider.zip:/etc/yt-dlp/plugins/bgutil-ytdlp-pot-provider.zip
 
-    command: ['--yta']
+    command: --yta
 
   tw:
     container_name: tw
 
-    image: yk:latest
+    image: yk-custom
     restart: unless-stopped
     tty: true
-    stdin_open: true
-    user: "1000"
 
     environment:
       YK_DELAY: 15
@@ -42,8 +38,6 @@ services:
     volumes:
       - ./:/out
       - ./lists/tw.txt:/src/tw.txt
-
-    command: []
 
 #  bgutil:
 #    image: brainicism/bgutil-ytdlp-pot-provider
