@@ -65,7 +65,7 @@ C_YTARCHIVE = ' '.join([
     "--no-save-state",
     "--write-mux-file",
     "--no-merge",
-    '--add-metadata'
+    '--add-metadata',
     "--threads",        "3"
 ])  # fmt: skip
 
