@@ -18,7 +18,7 @@ except ImportError:
     print("failed to import 'beautiful_traceback'")
     pass
 
-"""
+r"""
 todo:
     - web api
     - fix twitch chat
