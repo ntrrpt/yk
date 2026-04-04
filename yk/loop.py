@@ -130,7 +130,7 @@ def main(args):
                     log.debug(f'start recording: {ch}', cfg=cfg)
 
                     if cfg['delete']:
-                        config.parse_configs(files, cfg)
+                        config.parse_configs(files, cfg, args=args)
 
                     rec_args = {
                         'cfg': cfg,
