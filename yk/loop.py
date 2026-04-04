@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import json
 import random
 import shutil
 import subprocess as sp
@@ -36,61 +37,121 @@ def is_running(name):
     return False
 
 
-def is_live(url, proxy: str = '', cookies: Path = Path()):
+def dlp_is_live(url, proxy_url: str = '', cookies_txt: Path = Path()):
     if 'youtube' in url and 'watch?v=' not in url:
         url += '/live'
 
-    c = ['streamlink', '--loglevel', 'trace', '--url', url]
+    cmd = [
+        '--dump-json', 
+        '--no-playlist',
+        '--playlist-items', "1",
+        '--remote-components', 'ejs:github'
+    ]  # fmt: skip
 
-    if proxy:
-        c += ['--http-proxy', proxy]
+    if proxy_url:
+        cmd += ['--proxy', proxy_url]
 
-    if cookies.is_file():
-        c += ['--http-cookies-file', str(cookies)]
+    if cookies_txt.is_file():
+        cmd += ['--cookies', str(cookies_txt)]
 
-    with sp.Popen(c, stdout=sp.PIPE, stderr=sp.PIPE, text=True) as proc:
+    cmd += [url]
+
+    with sp.Popen(
+        ['yt-dlp'] + cmd,
+        stdout=sp.PIPE,
+        stderr=sp.PIPE,
+        text=True,
+        encoding='utf-8',
+        errors='replace',
+    ) as proc:
+        stdout, stderr = proc.communicate()
+        output = util.fesc(stdout + stderr)
+        online = False
+
+        if proc.poll() == 0:
+            try:
+                c_json = json.loads(stdout)
+                online = c_json.get('is_live') or False
+            except:  # noqa: E722
+                log.exception(
+                    f'failed to convert json info\n{output}', cfg=url, cmd=cmd
+                )
+
+        log.trace(
+            f'dlp_is_live: {online}\n{output}',
+            url=url,
+            proxy=proxy_url,
+            cookies_txt=cookies_txt,
+        )
+
+        return online
+
+
+def str_is_live(url, proxy_url: str = '', cookies_txt: Path = Path()):
+    if 'youtube' in url and 'watch?v=' not in url:
+        url += '/live'
+
+    cmd = ['--loglevel', 'trace', '--url', url]
+
+    if proxy_url:
+        cmd += ['--http-proxy', proxy_url]
+
+    if cookies_txt.is_file():
+        cmd += ['--http-cookies-file', str(cookies_txt)]
+
+    with sp.Popen(
+        ['streamlink'] + cmd,
+        stdout=sp.PIPE,
+        stderr=sp.PIPE,
+        text=True,
+        encoding='utf-8',
+        errors='replace',
+    ) as proc:
         stdout, stderr = proc.communicate()
 
         online = proc.poll() == 0
 
         output = util.fesc(stdout + stderr)
 
-        log.trace(f'is live: {online}\n{output}', url=url, proxy=proxy, cookies=cookies)
+        log.trace(
+            f'str_is_live: {online}\n{output}',
+            url=url,
+            proxy=proxy_url,
+            cookies_txt=cookies_txt,
+            cmd=cmd,
+        )
         return online
 
 
 def main(args):
-    if args.yta and not shutil.which('ytarchive'):
+    if args.rec == 'yta' and not shutil.which('ytarchive'):
         log.warning('ytarchive not found, fallback to yt-dlp')
-        args.yta = False
-        args.dlp = True
+        args.rec == 'dlp'
 
-    if args.dlp and not shutil.which('yt-dlp'):
+    if (args.rec == 'dlp' or args.chk == 'dlp') and not shutil.which('yt-dlp'):
         log.warning('yt-dlp not found, fallback to streamlink')
-        args.yta = False
-        args.dlp = False
+        args.rec == 'str'
 
-    if (args.yta or args.dlp) and not shutil.which('ffmpeg'):
+    if args.rec == 'dlp' and not shutil.which('ffmpeg'):
         log.warning('ffmpeg not found, fallback to streamlink')
-        args.yta = False
-        args.dlp = False
+        args.rec == 'str'
 
-    if not shutil.which('streamlink'):
+    if (args.rec == 'str' or args.chk == 'str') and not shutil.which('streamlink'):
         log.critical('streamlink not found, cannot continue')
         sys.exit(1)
 
     if not args.input:
-        log.critical('no channel lists, add some with "--input" argument')
+        log.critical('no channel lists, add some with "-i" argument')
         sys.exit(1)
 
     gf = util.get_files(args.input, exts=['.toml'])
     if not gf:
-        log.critical('no .toml files', dir=args.input)
+        log.critical('no .toml files found', dir=args.input)
         sys.exit(1)
 
     pc = config.parse_configs(gf, args=args)
     if not pc:
-        log.critical('no channels in configs')
+        log.critical('empty config files')
         sys.exit(1)
 
     try:
@@ -114,7 +175,18 @@ def main(args):
                     continue
 
                 proxy = random.choice(args.proxy) if args.proxy else None
-                stream = is_live(cfg['url'], proxy, args.cookies)
+                stream = None
+
+                match cfg['check']:
+                    case 'str':
+                        stream = str_is_live(cfg['url'], proxy, args.cookies)
+
+                    case 'dlp':
+                        stream = dlp_is_live(cfg['url'], proxy, args.cookies)
+
+                    case _:
+                        log.error(f'invalid chk: {cfg["check"]}')
+                        continue
 
                 if cfg['health']:
                     if not stream:
@@ -139,13 +211,6 @@ def main(args):
                         'cookies_txt': args.cookies,
                         'bgutil_url': args.bgutil,
                         'apprise_obj': util.get_apobj(args.apprise),
-                        #
-                        'yta': args.yta,
-                        'dlp': args.dlp,
-                        #
-                        'str_args': args.str_args,
-                        'dlp_args': args.dlp_args,
-                        'yta_args': args.yta_args,
                     }
 
                     t = threading.Thread(
@@ -161,9 +226,15 @@ def main(args):
                     threads=get_threads(),
                 )
 
-                for i in range(args.delay):
-                    if util.sum_mtime(files) == mtimes:
-                        time.sleep(1)
+                def sleep():
+                    for i in range(args.delay):
+                        if util.sum_mtime(files) == mtimes:
+                            time.sleep(1)
+
+                sleep()
+
+                if len(channels) == 1:  # rate-limit for single-item config
+                    sleep()
 
     except KeyboardInterrupt:
         unload.set()

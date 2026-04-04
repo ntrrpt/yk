@@ -80,19 +80,17 @@ def main():
     ENV = os.getenv
 
     # fmt: off
+    ADD('-i', '--input',   nargs='+', default=[], help='files with channels/streams (list1.toml, /root/list2.toml)') #TODO:str &&&&&&&&&&&&&&&
     ADD('-o', '--output', type=Path, default=ENV("YK_OUTPUT", '.'), help='stream output folder')
     ADD('-l', '--log',    type=Path, default=ENV("YK_LOG", '.'),    help='log output folder')
     ADD('-d', '--delay',  type=int,  default=ENV("YK_DELAY", 15),   help='streams check delay')
-
-    ADD('-i', '--input',   nargs='+', default=[], help='files with channels/streams (list1.toml, /root/list2.toml)') #TODO:str &&&&&&&&&&&&&&&
     ADD('-p', '--proxy',   nargs='+', default=[], help='proxies (socks5://user:pass@127.0.0.1:1080)')
     ADD('-a', '--apprise', nargs='+', default=[], help='apprise configs (.yml)')
-
     ADD('-c', '--cookies', type=Path, default=ENV("YK_COOKIES", ''),                     help='path to cookies.txt (netscape format)')
     ADD('-b', '--bgutil',  type=str,  default=ENV("YK_BGUTIL", 'http://127.0.0.1:4416'), help='bgutil-ytdlp-pot-provider url')
 
-    ADD('--dlp', action='store_true', help='use yt-dlp instead of streamlink')
-    ADD('--yta', action='store_true', help='use ytarchive for youtube streams')
+    ADD("--chk", type=str, choices=["dlp", "str"],        help="live-checking method")
+    ADD("--rec", type=str, choices=["str", "yta", "dlp"], help="recording method")
 
     ADD('--str-args', type=str, default=ENV("YK_ARGS_STREAMLINK", C_STREAMLINK), help='streamlink cli arguments')
     ADD('--dlp-args', type=str, default=ENV("YK_ARGS_YTDLP", C_YTDLP),           help='yt-dlp cli arguments')

@@ -9,7 +9,7 @@ import tomli_w
 from loguru import logger as log
 from validators import url as is_url
 
-from .util import YTA_Q, pf
+from .util import YTA_Q, con, pf
 
 
 def parse_configs(files: list = [], cfg_to_del: dict = {}, args=None):
@@ -70,11 +70,61 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}, args=None):
         ## parsing remaining values
 
         for item, cfg in toml.copy().items():
+            # basic options
             toml[item]['url'] = cfg.get('url') or cfg.get('u') or ''
             toml[item]['folder'] = cfg.get('folder') or cfg.get('f') or ''
             toml[item]['quality'] = cfg.get('quality') or cfg.get('q') or 'best'
             toml[item]['delete'] = bool(cfg.get('delete') or cfg.get('d') or False)
             toml[item]['health'] = bool(cfg.get('health') or False)
+
+            # checking method
+            toml[item]['check'] = cfg.get('check') or cfg.get('chk') or args.chk
+            if toml[item]['check'] not in ['str', 'dlp']:
+                toml[item]['check'] = args.chk
+
+            # recording method
+            toml[item]['record'] = cfg.get('record') or cfg.get('rec') or args.rec
+
+            if toml[item]['record'] not in ['str', 'dlp', 'yta']:
+                toml[item]['record'] = args.rec
+
+            if toml[item]['record'] == 'yta' and not con(
+                ['youtube.com', 'youtu.be'], toml[item]['url']
+            ):
+                log.warning(
+                    f'recording method is ytarchive, but non-youtube url detected ({toml[item]["url"]}), will fallback to yt-dlp',
+                    item=toml[item],
+                )
+                toml[item]['record'] = 'dlp'
+
+            # arguments for recording process
+            toml[item]['arguments'] = (
+                cfg.get('record_arguments') or cfg.get('rec_args') or None
+            )
+
+            if not toml[item]['arguments']:
+                match toml[item]['record']:
+                    case 'str':
+                        toml[item]['arguments'] = args.str_args
+
+                    case 'dlp':
+                        toml[item]['arguments'] = args.dlp_args
+
+                    case 'yta':
+                        toml[item]['arguments'] = args.yta_args
+
+            if (
+                toml[item]['record'] == 'yta'
+                and toml[item]['quality'] not in YTA_Q
+                and ('youtube' in toml[item]['url'] or 'youtu.be' in toml[item]['url'])
+            ):
+                log.error(
+                    f"{toml[item]['quality']!r} not supported in ytarchive, fallback to 'best' for now",
+                    file=file,
+                    item=item,
+                )
+                log.info(f'choose something from {", ".join(YTA_Q)!r}')
+                toml[item]['quality'] = 'best'
 
             rgx = cfg.get('regex') or cfg.get('r') or ''
             toml[item]['regex_title'] = cfg.get('regex_title', rgx)
@@ -95,19 +145,6 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}, args=None):
             for i in ('u', 'f', 'r', 'q', 'd'):
                 if i in cfg:
                     del toml[item][i]
-
-            if (
-                args.yta
-                and toml[item]['quality'] not in YTA_Q
-                and ('youtube' in toml[item]['url'] or 'youtu.be' in toml[item]['url'])
-            ):
-                log.error(
-                    f"{toml[item]['quality']!r} not supported in ytarchive, fallback to 'best' for now",
-                    file=file,
-                    item=item,
-                )
-                log.info(f'choose something from {", ".join(YTA_Q)!r}')
-                toml[item]['quality'] = 'best'
 
         #########################
         ## deleting single-use items

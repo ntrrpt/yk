@@ -21,14 +21,6 @@ from jc.conv import conv as jc_conv
 
 from .util import delete, dt_now, esc, fesc, timedelta_pretty, yt_dw_thumb
 
-# TODO: to args????? deattach ????????
-YTDLP_CONFIG = {
-    'quiet': True,
-    'playlist_items': 0,
-    'noplaylist': True,
-    'remote_components': ['ejs:github']
-}  # fmt: skip
-
 
 def record(
     cfg: dict,  # stream info
@@ -38,13 +30,6 @@ def record(
     cookies_txt: Path = Path(),  # cookie file in netscape format
     bgutil_url: str = 'http://127.0.0.1:4416',  # potoken provider (https://github.com/Brainicism/bgutil-ytdlp-pot-provider/)
     apprise_obj=None,  # apprise object (see util.get_apobj) # TODO: switch to ymls
-    #
-    yta: bool = False,  # use ytarchive for youtube streams
-    dlp: bool = False,  # use yt-dlp for everything (instead of streamlink)
-    #
-    str_args: str = '',  # cli arguments for streamlink (see __main__.C_STREAMLINK)
-    dlp_args: str = '',  # same for yt-dlp
-    yta_args: str = '',  # same for ytarchive
 ):
     """
     cfg_example = {
@@ -62,7 +47,12 @@ def record(
     if 'youtube' in cfg['url'] and 'watch?v=' not in cfg['url']:
         cfg['url'] += '/live'
 
-    c_info = ['yt-dlp', '-j']
+    c_info = [
+        '--dump-json', 
+        '--no-playlist',
+        '--playlist-items', "1",
+        '--remote-components', 'ejs:github'
+    ]  # fmt: skip
 
     if proxy_url:
         c_info += ['--proxy', proxy_url]
@@ -81,7 +71,7 @@ def record(
 
     try:
         p = sp.run(
-            c_info,
+            ['yt-dlp'] + c_info,
             check=True,
             capture_output=True,
             text=True,
@@ -100,7 +90,7 @@ def record(
         str_json = json.loads(str_raw)
     except:  # noqa: E722
         log.exception(
-            f'failed to convert json info\n{out}', cfg=cfg, cmd=cmd, raw=str_raw
+            f'failed to convert json info\n{str_raw}', cfg=cfg, cmd=cmd, raw=str_raw
         )
         sys.exit(1)
 
@@ -172,87 +162,88 @@ def record(
         f'[ONLINE] ({str_user} - {str_title + since_str.replace("\n", " ")}', cfg=cfg
     )
 
-    # streamlink cmd (default)
-    c = ['streamlink'] + shlex.split(str_args) + [
-        '--url', cfg['url'],
-        '--output', str_blank + '.ts',
-        '--default-stream', cfg['quality']
-    ]  # fmt: skip
+    match cfg['record']:
+        case 'str':
+            # streamlink cmd (default)
+            c = ['streamlink'] + shlex.split(cfg['arguments']) + [
+                '--url', cfg['url'],
+                '--output', str_blank + '.ts',
+                '--default-stream', cfg['quality']
+            ]  # fmt: skip
 
-    if proxy_url:
-        c += ['--http-proxy', proxy_url]
+            if proxy_url:
+                c += ['--http-proxy', proxy_url]
 
-    if cookies_txt.is_file():
-        c += ['--http-cookies-file', str(cookies_txt)]
+            if cookies_txt.is_file():
+                c += ['--http-cookies-file', str(cookies_txt)]
 
-    # yt-dlp cmd
-    if dlp:
-        c = ['yt-dlp'] + shlex.split(dlp_args)
+        case 'dlp':
+            c = ['yt-dlp'] + shlex.split(cfg['arguments'])
 
-        if 'youtube' in str_json['extractor']:
-            c += ['--live-from-start']
+            if 'youtube' in str_json['extractor']:
+                c += ['--live-from-start']
 
-        if proxy_url:
-            c += ['--proxy', proxy_url]
+            if proxy_url:
+                c += ['--proxy', proxy_url]
 
-        if cookies_txt.is_file():
-            c += ['--cookies', str(cookies_txt)]
+            if cookies_txt.is_file():
+                c += ['--cookies', str(cookies_txt)]
 
-        if bgutil_url != 'http://127.0.0.1:4416':
-            c += [
-                '--extractor-args',
-                f'youtubepot-bgutilhttp:base_url={bgutil_url}',
-            ]
+            if bgutil_url != 'http://127.0.0.1:4416':
+                c += [
+                    '--extractor-args',
+                    f'youtubepot-bgutilhttp:base_url={bgutil_url}',
+                ]
 
-        c += ['-o', str_blank + '.mp4', cfg['url']]
+            c += ['-o', str_blank + '.mp4', cfg['url']]
+        case 'yta':
+            c = ['ytarchive'] + shlex.split(cfg['arguments'])  # fmt: skip
 
-    # ytarchive cmd
-    if yta and 'youtube' in str_json['extractor']:
-        c = ['ytarchive'] + shlex.split(yta_args)  # fmt: skip
+            if proxy_url:
+                c += ['--proxy', proxy_url]
 
-        if proxy_url:
-            c += ['--proxy', proxy_url]
+            if cookies_txt.is_file():
+                c += ['--cookies', str(cookies_txt)]
 
-        if cookies_txt.is_file():
-            c += ['--cookies', str(cookies_txt)]
+            # appends potoken to ytarchive cmd
+            # need 'https://github.com/Brainicism/bgutil-ytdlp-pot-provider/'
+            # disabled due to 'https://github.com/dreammu/ytarchive' fork
+            if os.environ.get('YK_FORCE_YTARCHIVE_POTOKEN'):
+                try:
+                    r = requests.get(bgutil_url + '/ping', timeout=10)
+                    r.raise_for_status()
 
-        # appends potoken to ytarchive cmd
-        # need 'https://github.com/Brainicism/bgutil-ytdlp-pot-provider/'
-        # disabled due to 'https://github.com/dreammu/ytarchive' fork
-        if os.environ.get('YK_FORCE_YTARCHIVE_POTOKEN'):
-            try:
-                r = requests.get(bgutil_url + '/ping', timeout=10)
-                r.raise_for_status()
+                    bg = r.json()
+                    if 'server_uptime' not in bg or 'version' not in bg:
+                        raise Exception(f'invalid /ping: {bg}')
 
-                bg = r.json()
-                if 'server_uptime' not in bg or 'version' not in bg:
-                    raise Exception(f'invalid /ping: {bg}')
+                    r = requests.post(
+                        bgutil_url + '/get_pot',
+                        data={'proxy': proxy_url} if proxy_url else {},
+                        timeout=60,
+                    )
+                    r.raise_for_status()
 
-                r = requests.post(
-                    bgutil_url + '/get_pot',
-                    data={'proxy': proxy_url} if proxy_url else {},
-                    timeout=60,
-                )
-                r.raise_for_status()
+                    bg = r.json()
+                    if 'poToken' not in bg:
+                        raise Exception(f'invalid /get_pot: {bg}')
 
-                bg = r.json()
-                if 'poToken' not in bg:
-                    raise Exception(f'invalid /get_pot: {bg}')
+                    log.debug('get potoken from bgutil', token=bg['poToken'])
 
-                log.debug('get potoken from bgutil', token=bg['poToken'])
+                    c += ['--potoken', bg['poToken']]
 
-                c += ['--potoken', bg['poToken']]
+                except Exception as ex:
+                    log.exception(f'bgutil - {str(ex)}')
 
-            except Exception as ex:
-                log.exception(f'bgutil - {str(ex)}')
+            if bgutil_url != 'http://127.0.0.1:4416':
+                c += [
+                    '--ytdlp-opts',
+                    f'--extractor-args youtubepot-bgutilhttp:base_url={bgutil_url}',
+                ]
 
-        if bgutil_url != 'http://127.0.0.1:4416':
-            c += [
-                '--ytdlp-opts',
-                f'--extractor-args youtubepot-bgutilhttp:base_url={bgutil_url}',
-            ]
-
-        c += ['--output', str_blank, cfg['url'], cfg['quality']]
+            c += ['--output', str_blank, cfg['url'], cfg['quality']]
+        case _:
+            log.error(f'invalid rec_method: {cfg["record"]}')
 
     # chat_downloader cmd
     c_chat = [
@@ -268,8 +259,8 @@ def record(
 
     c_chat = ['chat_downloader'] + c_chat + [str_json['webpage_url']]
 
-    log.debug(f'rec_cli: {" ".join(c)}')
-    log.debug(f'chat_cli: {" ".join(c_chat)}')
+    log.debug(f'{cfg["record"]}: {" ".join(c)}')
+    log.debug(f'chat: {" ".join(c_chat)}')
 
     # video process
     str_txt = open(str_blank + '.log', 'a')
@@ -310,7 +301,11 @@ def record(
         log.info(f'[offline] ({str_user} - {str_title}) ', cfg=cfg)
 
     # manual ytarchive merging
-    if yta and 'youtube' in str_json['extractor'] and not stop_event.is_set():
+    if (
+        cfg['record'] == 'yta'
+        and 'youtube' in str_json['extractor']
+        and not stop_event.is_set()
+    ):
         c_merge = '=C'
         files_to_delete = []
 
@@ -360,5 +355,3 @@ def record(
 
     # remove [live] prefix
     str_dir.rename(output_dir / Path(esc(cfg['folder'])) / str_name)
-
-    sys.exit(0)

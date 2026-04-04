@@ -60,8 +60,8 @@ def timedelta_pretty(td: timedelta, ms_add=False) -> str:
     return r
 
 
-def con(d, c):
-    return any(k in str(c) for k in d)
+def con(lst, string):
+    return any(k in str(string) for k in lst)
 
 
 def sum_mtime(files):
