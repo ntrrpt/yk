@@ -5,7 +5,8 @@ import os
 import re
 import shlex
 import signal
-import subprocess
+import subprocess as sp
+import sys
 import threading
 import time
 from datetime import datetime, timedelta
@@ -13,13 +14,12 @@ from pathlib import Path
 
 import psutil
 import requests
-import yt_dlp
 from loguru import logger as log
 from stopwatch import Stopwatch
 
 from jc.conv import conv as jc_conv
 
-from .util import delete, dt_now, esc, timedelta_pretty, yt_dump_thumb
+from .util import delete, dt_now, esc, fesc, timedelta_pretty, yt_dw_thumb
 
 # TODO: to args????? deattach ????????
 YTDLP_CONFIG = {
@@ -58,24 +58,51 @@ def record(
     }
     """
 
-    if proxy_url:
-        YTDLP_CONFIG['proxy'] = proxy_url
-
-    if cookies_txt.is_file():
-        YTDLP_CONFIG['cookiefile'] = cookies_txt
-
-    if bgutil_url != 'http://127.0.0.1:4416':
-        YTDLP_CONFIG['extractor_args'] = {
-            'youtubepot-bgutilhttp': {'base_url': [bgutil_url]}
-        }
-
     # += '/live' for channel links
     if 'youtube' in cfg['url'] and 'watch?v=' not in cfg['url']:
         cfg['url'] += '/live'
 
-    # getting livestream info TODO: deattach
-    with yt_dlp.YoutubeDL(YTDLP_CONFIG) as y:
-        str_json = y.extract_info(cfg['url'], download=False)
+    c_info = ['yt-dlp', '-j']
+
+    if proxy_url:
+        c_info += ['--proxy', proxy_url]
+
+    if cookies_txt.is_file():
+        c_info += ['--cookies', str(cookies_txt)]
+
+    if bgutil_url != 'http://127.0.0.1:4416':
+        c_info += [
+            '--extractor-args',
+            f'youtubepot-bgutilhttp:base_url={bgutil_url}',
+        ]
+
+    c_info += [cfg['url']]
+    str_raw = ''
+
+    try:
+        p = sp.run(
+            c_info,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            errors='replace',
+        )
+        str_raw, _ = p.stdout, p.stderr
+    except sp.CalledProcessError:
+        cmd = ' '.join(c_info)
+        out = fesc(p.stdout + p.stderr)
+
+        log.error(f'failed to get info\n{out}', cfg=cfg, cmd=cmd)
+        sys.exit(1)
+
+    try:
+        str_json = json.loads(str_raw)
+    except:  # noqa: E722
+        log.exception(
+            f'failed to convert json info\n{out}', cfg=cfg, cmd=cmd, raw=str_raw
+        )
+        sys.exit(1)
 
     # getting username and livestream title for files
     match str_json['extractor']:
@@ -101,11 +128,11 @@ def record(
     # regex filtering
     if cfg['regex_title']:
         if not re.findall(cfg['regex_title'].lower(), str_title.lower()):
-            return
+            sys.exit(0)
 
     if cfg['regex_desc'] and str_json.get('description'):
         if not re.findall(cfg['regex_desc'].lower(), str_json['description'].lower()):
-            return
+            sys.exit(0)
 
     # [YY_MM_DD hh_mm_ss] username - livestream title
     str_name = esc(f'[{dt_now()}] {str_user} - {str_title}')
@@ -117,18 +144,18 @@ def record(
     # template for livestream files (*.json, *.conv, *.log, ...)
     str_blank = str(str_dir / str_name)
 
-    # download youtube thumb
-    if 'youtube' in str_json['extractor']:
-        yt_dump_thumb(
-            path=str_blank + '.jpg',
-            video_id=str_json['id'],
-            proxy=proxy_url,
-        )
-
     # saving stream info to json
     str_info = json.dumps(str_json, indent=5, ensure_ascii=False, sort_keys=True)
     with open(str_blank + '.info', 'w', encoding='utf-8') as f:
         f.write(str(str_info))
+
+    # download youtube thumb
+    if 'youtube' in str_json['extractor']:
+        yt_dw_thumb(
+            path=str_blank + '.jpg',
+            video_id=str_json['id'],
+            proxy=proxy_url,
+        )
 
     # append 'online for HH:MM:SS' to notify
     since_str = ''
@@ -246,12 +273,12 @@ def record(
 
     # video process
     str_txt = open(str_blank + '.log', 'a')
-    str_proc = subprocess.Popen(c, stdout=str_txt, stderr=str_txt, cwd=str_dir)
+    str_proc = sp.Popen(c, stdout=str_txt, stderr=str_txt, cwd=str_dir)
     str_pid = psutil.Process(str_proc.pid)
 
     # chat process
     chat_txt = open(str_blank + '.chat', 'w')
-    chat_proc = subprocess.Popen(c_chat, stdout=chat_txt, stderr=chat_txt, cwd=str_dir)
+    chat_proc = sp.Popen(c_chat, stdout=chat_txt, stderr=chat_txt, cwd=str_dir)
     chat_pid = psutil.Process(chat_proc.pid)
 
     # measure livestream duration
@@ -301,7 +328,7 @@ def record(
         if c_merge == '=C':
             log.error(f"can't find *ffmpeg.txt in {str_dir!r}", cfg=cfg)
         else:
-            with subprocess.Popen(c_merge, stderr=str_txt) as proc:
+            with sp.Popen(c_merge, stderr=str_txt) as proc:
                 while True:
                     time.sleep(1)
                     p = proc.poll()
@@ -333,3 +360,5 @@ def record(
 
     # remove [live] prefix
     str_dir.rename(output_dir / Path(esc(cfg['folder'])) / str_name)
+
+    sys.exit(0)

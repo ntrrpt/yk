@@ -9,23 +9,28 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "apprise>=1.9.4",
-    "beautiful-traceback>=0.9.0",
     "chat-downloader @ git+https://github.com/ntrrpt/chat-downloader.git@354931cbe2be7acc635f08a724e8f85f7b3f3dc2",
     "colorama>=0.4.6",
     "loguru>=0.7.3",
     "psutil>=7.0.0",
+    "pysocks>=1.7.1",
     "requests>=2.32.3",
     "stopwatch-py>=2.0.1",
-    "streamlink>=8.2.1",
     "tabulate[widechars]>=0.9.0",
     "tomli-w>=1.2.0",
     "validators>=0.35.0",
-    "yt-dlp>=2026.03.17",
+]
+
+[project.optional-dependencies]
+dw = [
+    "streamlink>=8.2.1",
+    "yt-dlp>=2026.3.17",
 ]
 
 [dependency-groups]
 dev = [
-    "ruff"
+    "ruff",
+    "beautiful-traceback>=0.9.0"
 ]
 
 [tool.ruff.format]

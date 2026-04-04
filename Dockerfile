@@ -1,35 +1,52 @@
-FROM ghcr.io/astral-sh/uv:python3.13-alpine
+# ytarchive
+FROM golang:alpine AS ytarchive_builder
+WORKDIR /yta
 
-#TODO: strip python packages
+RUN apk add --no-cache --progress git
+RUN git clone --revision=742674da1fa618365074de714b9517cc79d1bb38 https://github.com/dreammu/ytarchive /yta/git
+RUN go build -C /yta/git -ldflags="-s -w" -o /yta/bin -v
 
-# uv envs
-ENV UV_COMPILE_BYTECODE=1
-ENV UV_NO_PROGRESS=1
-ENV UV_NO_SYNC=1
-ENV UV_NO_DEV=1
-ENV NO_COLOR=1
 
-# yk envs
-ENV YK_COOKIES=/cookies.txt
-ENV YK_APPRISE=/apprise
-ENV YK_OUTPUT=/out
-ENV YK_INPUT=/src
-ENV YK_LOG=/out
+# yk .venv
+FROM python:3.13-alpine AS yk_builder
+WORKDIR /yk
 
-RUN apk add --no-cache --progress deno bash go git curl ffmpeg build-base linux-headers 
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-RUN bash -c 'git clone --revision=742674da1fa618365074de714b9517cc79d1bb38 https://github.com/dreammu/ytarchive /tmp/ytarchive \
-    && go build -C /tmp/ytarchive -ldflags="-s -w" -o /usr/local/bin/ytarchive -v \
-    && rm -rf /tmp/ytarchive /root/go /root/.cache/go-build'
+RUN apk add --no-cache --progress build-base linux-headers git
 
-RUN bash -c 'mkdir -p /app \ 
-    && chmod -R 777 /app \
-    && mkdir -p /.cache \
-    && chmod 777 /.cache'
+ENV UV_TOOL_DIR=/yk/.tools \
+    UV_COMPILE_BYTECODE=1 \
+    UV_NO_PROGRESS=1 \
+    UV_NO_SYNC=1 \
+    UV_NO_DEV=1 \
+    NO_COLOR=1
 
-WORKDIR /app
-COPY pyproject.toml uv.lock /app
+RUN uv tool install yt-dlp[default]
+RUN uv tool install streamlink
+
+COPY pyproject.toml uv.lock .
 RUN uv sync
-COPY . /app
 
-ENTRYPOINT ["uv", "run", "-m", "yk"]
+
+# final app
+FROM python:3.13-alpine
+WORKDIR /yk
+
+RUN apk add --no-cache --progress deno bash curl ffmpeg gosu
+
+COPY --from=ytarchive_builder /yta/bin /usr/local/bin/ytarchive
+COPY --from=yk_builder /yk /yk
+COPY . .
+
+RUN ln -s /yk/.tools/streamlink/bin/streamlink /usr/local/bin/streamlink 
+RUN ln -s /yk/.tools/yt-dlp/bin/yt-dlp /usr/local/bin/yt-dlp 
+
+ENV PATH="/yk/.venv/bin:$PATH" \
+    YK_COOKIES=/cookies.txt \
+    YK_APPRISE=/apprise \
+    YK_INPUT=/lists \
+    YK_OUTPUT=/out \
+    YK_LOG=/out
+
+ENTRYPOINT ["./entryway.sh"]

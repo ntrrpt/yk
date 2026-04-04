@@ -53,8 +53,7 @@ def is_live(url, proxy: str = '', cookies: Path = Path()):
 
         online = proc.poll() == 0
 
-        # loguru '{}' escaping bug
-        output = str(stdout + stderr).replace('{', '{{').replace('}', '}}')
+        output = util.fesc(stdout + stderr)
 
         log.trace(f'is live: {online}\n{output}', url=url, proxy=proxy, cookies=cookies)
         return online
@@ -86,7 +85,7 @@ def main(args):
 
     gf = util.get_files(args.input, exts=['.toml'])
     if not gf:
-        log.critical('no .toml files')
+        log.critical('no .toml files', dir=args.input)
         sys.exit(1)
 
     pc = config.parse_configs(gf, args=args)
@@ -156,7 +155,7 @@ def main(args):
                     )
                     t.start()
 
-                log.trace(
+                log.debug(
                     '%s / %s | %s is streaming.'
                     % (i, len(channels), threading.active_count() - 1),
                     threads=get_threads(),

@@ -15,7 +15,6 @@ try:
 
     beautiful_traceback.install()
 except ImportError:
-    print("failed to import 'beautiful_traceback'")
     pass
 
 r"""
@@ -23,9 +22,11 @@ todo:
     - web api
     - fix twitch chat
     - str / dlp for 'is_alive'
-    - deattach yt-dlp
-    - remove stopwatch-py ???
-    - argparse groups
+    - apprise one.yml
+    - except tomls
+    - url as pos args
+    - remove stopwatch-py ??? !!!!!!!!!!!!!!!!
+    - argparse groups !!!!!!!!!!!!
     - yta / str / dlp mode for each channel
     - binary via pyinstaller or smth 
      \_ github actions maybe

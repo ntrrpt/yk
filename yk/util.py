@@ -81,6 +81,11 @@ def float_fmt(number: int, digits: int):
     return f'{number:.{digits}f}'
 
 
+# loguru '{}' escaping bug workaround
+def fesc(s: str):
+    return s.replace('{', '{{').replace('}', '}}')
+
+
 def esc(name: str, replacement: str = '_', limit: int = 255) -> str:
     allowed_brackets = '()[]{}'
     r = []
@@ -168,7 +173,7 @@ def get_files(
     return result
 
 
-def yt_dump_thumb(path: Path | str, video_id: str, proxy: str | None = None):
+def yt_dw_thumb(path: Path | str, video_id: str, proxy: str | None = None):
     path = Path(path)
     proxies = {'http': proxy, 'https': proxy} if proxy else None
 
