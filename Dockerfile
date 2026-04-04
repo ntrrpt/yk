@@ -13,8 +13,8 @@ ENV NO_COLOR=1
 ENV YK_COOKIES=/cookies.txt
 ENV YK_APPRISE=/apprise
 ENV YK_OUTPUT=/out
+ENV YK_INPUT=/src
 ENV YK_LOG=/out
-ENV YK_SRC=/src
 
 RUN apk add --no-cache --progress deno bash go git curl ffmpeg build-base linux-headers 
 
