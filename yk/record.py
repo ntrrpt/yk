@@ -162,7 +162,7 @@ def record(
         f'[ONLINE] ({str_user} - {str_title + since_str.replace("\n", " ")}', cfg=cfg
     )
 
-    match cfg['record']:
+    match cfg['recorder']:
         case 'str':
             # streamlink cmd (default)
             c = ['streamlink'] + shlex.split(cfg['arguments']) + [
@@ -243,7 +243,7 @@ def record(
 
             c += ['--output', str_blank, cfg['url'], cfg['quality']]
         case _:
-            log.error(f'invalid rec_method: {cfg["record"]}')
+            log.error(f'invalid recorder: {cfg["recorder"]}')
 
     # chat_downloader cmd
     c_chat = [
@@ -259,7 +259,7 @@ def record(
 
     c_chat = ['chat_downloader'] + c_chat + [str_json['webpage_url']]
 
-    log.debug(f'{cfg["record"]}: {" ".join(c)}')
+    log.debug(f'{cfg["recorder"]}: {" ".join(c)}')
     log.debug(f'chat: {" ".join(c_chat)}')
 
     # video process
@@ -302,7 +302,7 @@ def record(
 
     # manual ytarchive merging
     if (
-        cfg['record'] == 'yta'
+        cfg['recorder'] == 'yta'
         and 'youtube' in str_json['extractor']
         and not stop_event.is_set()
     ):

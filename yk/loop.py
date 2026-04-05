@@ -42,6 +42,7 @@ def dlp_is_live(url, proxy_url: str = '', cookies_txt: Path = Path()):
         url += '/live'
 
     cmd = [
+        '--verbose',
         '--dump-json', 
         '--no-playlist',
         '--playlist-items', "1",
@@ -65,7 +66,6 @@ def dlp_is_live(url, proxy_url: str = '', cookies_txt: Path = Path()):
         errors='replace',
     ) as proc:
         stdout, stderr = proc.communicate()
-        output = util.fesc(stdout + stderr)
         online = False
 
         if proc.poll() == 0:
@@ -74,11 +74,13 @@ def dlp_is_live(url, proxy_url: str = '', cookies_txt: Path = Path()):
                 online = c_json.get('is_live') or False
             except:  # noqa: E722
                 log.exception(
-                    f'failed to convert json info\n{output}', cfg=url, cmd=cmd
+                    f'failed to convert json info\n{util.fesc(stdout + stderr)}',
+                    cfg=url,
+                    cmd=cmd,
                 )
 
         log.trace(
-            f'dlp_is_live: {online}\n{output}',
+            f'dlp_is_live: {online}\n{util.fesc(stderr)}',
             url=url,
             proxy=proxy_url,
             cookies_txt=cookies_txt,
@@ -108,9 +110,7 @@ def str_is_live(url, proxy_url: str = '', cookies_txt: Path = Path()):
         errors='replace',
     ) as proc:
         stdout, stderr = proc.communicate()
-
         online = proc.poll() == 0
-
         output = util.fesc(stdout + stderr)
 
         log.trace(
@@ -154,6 +154,8 @@ def main(args):
         log.critical('empty config files')
         sys.exit(1)
 
+    log.info('started!')
+
     try:
         while True:
             files = util.get_files(args.input, exts=['.toml'])
@@ -177,7 +179,7 @@ def main(args):
                 proxy = random.choice(args.proxy) if args.proxy else None
                 stream = None
 
-                match cfg['check']:
+                match cfg['checker']:
                     case 'str':
                         stream = str_is_live(cfg['url'], proxy, args.cookies)
 
@@ -185,7 +187,7 @@ def main(args):
                         stream = dlp_is_live(cfg['url'], proxy, args.cookies)
 
                     case _:
-                        log.error(f'invalid chk: {cfg["check"]}')
+                        log.error(f'invalid checker: {cfg["checker"]}', cfg=cfg)
                         continue
 
                 if cfg['health']:

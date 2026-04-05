@@ -78,24 +78,24 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}, args=None):
             toml[item]['health'] = bool(cfg.get('health') or False)
 
             # checking method
-            toml[item]['check'] = cfg.get('check') or cfg.get('chk') or args.chk
-            if toml[item]['check'] not in ['str', 'dlp']:
-                toml[item]['check'] = args.chk
+            toml[item]['checker'] = cfg.get('checker') or cfg.get('chk') or args.chk
+            if toml[item]['checker'] not in ['str', 'dlp']:
+                toml[item]['checker'] = args.chk
 
             # recording method
-            toml[item]['record'] = cfg.get('record') or cfg.get('rec') or args.rec
+            toml[item]['recorder'] = cfg.get('recorder') or cfg.get('rec') or args.rec
 
-            if toml[item]['record'] not in ['str', 'dlp', 'yta']:
-                toml[item]['record'] = args.rec
+            if toml[item]['recorder'] not in ['str', 'dlp', 'yta']:
+                toml[item]['recorder'] = args.rec
 
-            if toml[item]['record'] == 'yta' and not con(
+            if toml[item]['recorder'] == 'yta' and not con(
                 ['youtube.com', 'youtu.be'], toml[item]['url']
             ):
                 log.warning(
                     f'recording method is ytarchive, but non-youtube url detected ({toml[item]["url"]}), will fallback to yt-dlp',
                     item=toml[item],
                 )
-                toml[item]['record'] = 'dlp'
+                toml[item]['recorder'] = 'dlp'
 
             # arguments for recording process
             toml[item]['arguments'] = (
@@ -103,7 +103,7 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}, args=None):
             )
 
             if not toml[item]['arguments']:
-                match toml[item]['record']:
+                match toml[item]['recorder']:
                     case 'str':
                         toml[item]['arguments'] = args.str_args
 
@@ -114,7 +114,7 @@ def parse_configs(files: list = [], cfg_to_del: dict = {}, args=None):
                         toml[item]['arguments'] = args.yta_args
 
             if (
-                toml[item]['record'] == 'yta'
+                toml[item]['recorder'] == 'yta'
                 and toml[item]['quality'] not in YTA_Q
                 and ('youtube' in toml[item]['url'] or 'youtu.be' in toml[item]['url'])
             ):
