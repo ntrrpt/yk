@@ -89,7 +89,7 @@ def parse(i: list = [], args=None, cfg_to_del: dict = {}):
             )
             toml[item]['apprise'] = cfg.get('apprise') or args.apprise
             toml[item]['cookies'] = cfg.get('cookies') or args.cookies
-            toml[item]['bgutil'] = cfg.get('bgutil') or args.bgutil
+            toml[item]['bgutil'] = cfg.get('bgutil') or args.bgutil  # imo useless
 
             # live-stream checking method
             toml[item]['checker'] = cfg.get('checker') or cfg.get('chk') or args.chk
@@ -101,7 +101,7 @@ def parse(i: list = [], args=None, cfg_to_del: dict = {}):
             if toml[item]['recorder'] not in ['str', 'dlp', 'yta']:
                 toml[item]['recorder'] = args.rec
 
-            # check for ytarchive recorder for non-youtube streams
+            # check for ytarchive recorder in non-youtube streams
             if toml[item]['recorder'] == 'yta' and not con(
                 ['youtube.com', 'youtu.be'], toml[item]['url']
             ):
