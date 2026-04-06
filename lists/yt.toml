@@ -1,29 +1,59 @@
-# title can be used instead of 'url' item
+# title can be used instead of url
 ['https://www.youtube.com/channel/UCsUj0dszADCGbF3gNrQEuSQ']
-q = 'best'
+q = 'best' # q => quality
 r = 'archive' # 'r' or 'regex' => 'regex_title' and 'regex_desc'
 
+
 ['Ceres Fauna']
-u = 'https://www.youtube.com/channel/UCO_aKKYxn4tvrqPjcTzZ6EQ'
-quality = '480p' # q
-regex_title = 'asmr|archive' 
+u = 'https://www.youtube.com/channel/UCO_aKKYxn4tvrqPjcTzZ6EQ' # u => url
+quality = '480p'
+regex_title = 'asmr|archive' # regex, but only for title
+
 
 ['Nanashi Mumei']
 url = 'https://www.youtube.com/channel/UC3n5uGu18FoCy23ggWWp8tA' # u
 quality = '360p'
-delete = true # will remove 'Nanashi Mumei' if she is streaming
 
-# will be removed too, because url starts with '!'
+# will remove “Nanashi Mumei” from this toml file, if owl starts streaming
+delete = true 
+
+
+# will also be removed, since the URL begins with an '!'
+# (useful for one-time downloads)
 ['!https://www.youtube.com/channel/UCgmPnx-EEeOrZSg5Tiw7ZRQ']
-f = 'alive'
-q = 'worst' # ‘worst’ does not work in ytarchive, will fallback to ‘best’
+f = 'alive' # f => folder (output_dir/folder)
+
+# use specific tools for checking and recording item
+chk = 'dlp' # chk => checker, dlp => yt-dlp
+rec = 'yta' # rec => recorder, yta => ytarchive
+
+# ‘worst’ does not work in ytarchive, will fallback to ‘best’
+q = 'worst' 
+
+# apprise cfg, only for this item
+apprise = 'apprise.yml' 
+
 
 ['Ouro Kronii'] 
-folder = 'alive' # f
 u = 'https://www.youtube.com/channel/UCmbs8T6MWqUHP1tIQvSgKrg'
+folder = 'alive'
+proxy = 'socks5://localhost:1080' # proxy url, only for kronii
+apprise = 'ntfys://test_channeru' # can be a url too
 
-# healthcheck, will inform you if the 'check_live' was failed
-# useful for checking if yt cookies are rotated
-['@https://www.youtube.com/watch?v=jfKfPfyJRdk'] 
 
-# all comments will be destroyed if config is overwritten with 'delete' func
+['Clio']
+u = 'https://twitch.tv/clioaite'
+f = 'phase'
+
+# str => streamlink, works good with twitch.tv (unlike youtube)
+checker = 'str'
+recorder = 'str'
+
+
+# healthcheck, will notify you if the “is_live” check fails
+# useful for checking whether youtube cookies are being rotated
+['@https://www.youtube.com/watch?v=jfKfPfyJRdk'] # endless lo-fi girl stream
+
+
+# all comments will be deleted if the item is deleted
+# using the “delete” feature, sorry（　´_ゝ`）
