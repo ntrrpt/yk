@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import json
-import random
 import shutil
 import subprocess as sp
 import sys
@@ -14,10 +13,11 @@ from loguru import logger as log
 from . import config, util
 from .record import record
 
+first_launch = True
 unload = threading.Event()
 
 
-def get_threads(raw=False):
+def get_threads(raw: bool = False):
     threads = [x for x in threading.enumerate() if x.name != 'MainThread']
 
     if raw:
@@ -26,7 +26,7 @@ def get_threads(raw=False):
     return [x.name for x in threads]
 
 
-def is_running(name):
+def is_running(name: str = ''):
     threads = get_threads()
 
     if name in threads:
@@ -37,7 +37,7 @@ def is_running(name):
     return False
 
 
-def dlp_is_live(url, proxy_url: str = '', cookies_txt: Path = Path()):
+def dlp_is_live(url, proxy_url: str = '', cookies_txt: str = ''):
     if 'youtube' in url and 'watch?v=' not in url:
         url += '/live'
 
@@ -52,13 +52,11 @@ def dlp_is_live(url, proxy_url: str = '', cookies_txt: Path = Path()):
     if proxy_url:
         cmd += ['--proxy', proxy_url]
 
-    if cookies_txt.is_file():
-        cmd += ['--cookies', str(cookies_txt)]
-
-    cmd += [url]
+    if Path(cookies_txt).is_file():
+        cmd += ['--cookies', cookies_txt]
 
     with sp.Popen(
-        ['yt-dlp'] + cmd,
+        ['yt-dlp'] + cmd + [url],
         stdout=sp.PIPE,
         stderr=sp.PIPE,
         text=True,
@@ -89,7 +87,7 @@ def dlp_is_live(url, proxy_url: str = '', cookies_txt: Path = Path()):
         return online
 
 
-def str_is_live(url, proxy_url: str = '', cookies_txt: Path = Path()):
+def str_is_live(url, proxy_url: str = '', cookies_txt: str = ''):
     if 'youtube' in url and 'watch?v=' not in url:
         url += '/live'
 
@@ -98,8 +96,8 @@ def str_is_live(url, proxy_url: str = '', cookies_txt: Path = Path()):
     if proxy_url:
         cmd += ['--http-proxy', proxy_url]
 
-    if cookies_txt.is_file():
-        cmd += ['--http-cookies-file', str(cookies_txt)]
+    if Path(cookies_txt).is_file():
+        cmd += ['--http-cookies-file', cookies_txt]
 
     with sp.Popen(
         ['streamlink'] + cmd,
@@ -124,6 +122,8 @@ def str_is_live(url, proxy_url: str = '', cookies_txt: Path = Path()):
 
 
 def main(args):
+    global first_launch
+
     if args.rec == 'yta' and not shutil.which('ytarchive'):
         log.warning('ytarchive not found, fallback to yt-dlp')
         args.rec == 'dlp'
@@ -144,47 +144,47 @@ def main(args):
         log.critical('no channel lists, add some with "-i" argument')
         sys.exit(1)
 
-    gf = util.get_files(args.input, exts=['.toml'])
-    if not gf:
-        log.critical('no .toml files found', dir=args.input)
-        sys.exit(1)
-
-    pc = config.parse_configs(gf, args=args)
-    if not pc:
-        log.critical('empty config files')
-        sys.exit(1)
-
     log.info('started!')
 
     try:
         while True:
-            files = util.get_files(args.input, exts=['.toml'])
+            mtimes = util.sum_mtime(args.input)
 
-            if not files:
-                log.error('no files for monitoring')
-                time.sleep(args.delay)
+            def _sleep():
+                # sleeping, but checking for toml changes
+                for i in range(args.delay):
+                    if util.sum_mtime(args.input) == mtimes:
+                        time.sleep(1)
 
-            channels = config.parse_configs(files, args=args)
+            channels = config.parse(args.urls + args.input, args=args)
+            if not channels:
+                log.error('no channels for monitoring', input=args.input)
+                if first_launch:
+                    sys.exit(1)
 
-            mtimes = util.sum_mtime(files)
+                _sleep()
+                continue
+
+            log.error(util.pf(channels))
 
             for i, (ch, cfg) in enumerate(channels.items(), start=1):
-                if util.sum_mtime(files) != mtimes:
-                    log.info('list updated!')
+                if util.sum_mtime(args.input) != mtimes:
+                    log.info(
+                        'list updated!', old=mtimes, new=util.sum_mtime(args.input)
+                    )
                     break
 
                 if is_running(cfg['url']):
                     continue
 
-                proxy = random.choice(args.proxy) if args.proxy else None
                 stream = None
 
                 match cfg['checker']:
                     case 'str':
-                        stream = str_is_live(cfg['url'], proxy, args.cookies)
+                        stream = str_is_live(cfg['url'], cfg['proxy'], cfg['cookies'])
 
                     case 'dlp':
-                        stream = dlp_is_live(cfg['url'], proxy, args.cookies)
+                        stream = dlp_is_live(cfg['url'], cfg['proxy'], cfg['cookies'])
 
                     case _:
                         log.error(f'invalid checker: {cfg["checker"]}', cfg=cfg)
@@ -194,7 +194,7 @@ def main(args):
                     if not stream:
                         log.error(f'HEALTHCHECK FAILED: {cfg["url"]}')
 
-                        apobj = util.get_apobj(args.apprise)
+                        apobj = util.get_apobj(cfg['apprise'])
                         apobj.notify(title='[HEALTHCHECK FAILED]', body=cfg['url'])
                     else:
                         log.debug(f'health ok: {ch}')
@@ -203,22 +203,13 @@ def main(args):
                     log.debug(f'start recording: {ch}', cfg=cfg)
 
                     if cfg['delete']:
-                        config.parse_configs(files, cfg, args=args)
+                        config.parse_configs(args.input, cfg, args=args)
 
-                    rec_args = {
-                        'cfg': cfg,
-                        'stop_event': unload,
-                        'output_dir': args.output,
-                        'proxy_url': proxy,
-                        'cookies_txt': args.cookies,
-                        'bgutil_url': args.bgutil,
-                        'apprise_obj': util.get_apobj(args.apprise),
-                    }
-
+                    cfg['event'] = unload
                     t = threading.Thread(
                         target=record,
                         name=cfg['url'],
-                        kwargs=rec_args,
+                        kwargs=cfg,
                     )
                     t.start()
 
@@ -228,15 +219,12 @@ def main(args):
                     threads=get_threads(),
                 )
 
-                def sleep():
-                    for i in range(args.delay):
-                        if util.sum_mtime(files) == mtimes:
-                            time.sleep(1)
+                _sleep()
 
-                sleep()
+                if len(channels) == 1:
+                    _sleep()  # rate-limit for single-item config
 
-                if len(channels) == 1:  # rate-limit for single-item config
-                    sleep()
+            first_launch = False
 
     except KeyboardInterrupt:
         unload.set()

@@ -5,7 +5,6 @@ import re
 import unicodedata
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List
 
 import apprise
 import requests
@@ -31,14 +30,19 @@ YTA_Q = [
 ]
 
 
-def get_apobj(path=[]):
+def get_apobj(payload: Path = Path()):
     apobj = apprise.Apprise()
 
-    cfg = apprise.AppriseConfig()
-    for file in get_files(path, exts=['.yml']):
-        cfg.add(str(file))
+    try:
+        if not Path(payload).is_file():
+            raise
 
-    apobj.add(cfg)
+        cfg = apprise.AppriseConfig()
+        cfg.add(str(payload))
+        apobj.add(cfg)
+
+    except:  # noqa: E722
+        apobj.add(payload)
 
     return apobj
 
@@ -143,36 +147,6 @@ def pf(data: str):
     return str(json.dumps(data, indent=4, ensure_ascii=False))
 
 
-def get_files(
-    paths: str | Path | List[str | Path],
-    recursive: bool = False,
-    exts: List[str] = None,
-) -> List[Path]:
-    if not isinstance(paths, list):
-        paths = [paths]
-
-    result: List[Path] = []
-
-    def matches_extensions(file_path: Path):
-        return exts is None or file_path.suffix in exts
-
-    for p in paths:
-        path = Path(p)
-        if not path.exists():
-            continue
-
-        if path.is_file():
-            if matches_extensions(path):
-                result.append(path)
-        elif path.is_dir():
-            files = path.rglob('*') if recursive else path.iterdir()
-            result.extend(f for f in files if f.is_file() and matches_extensions(f))
-        else:
-            raise ValueError(f'invalid path type: {path}')
-
-    return result
-
-
 def yt_dw_thumb(path: Path | str, video_id: str, proxy: str | None = None):
     path = Path(path)
     proxies = {'http': proxy, 'https': proxy} if proxy else None
@@ -200,9 +174,10 @@ def _http_cookies_regex(path: Path | str):
 
     c_args = []
 
+    # https://github.com/streamlink/streamlink/issues/3370#issuecomment-846261921
     pattern = re.compile(
         r'(?P<site>.*?)\t(TRUE|FALSE)\t/\t(TRUE|FALSE)\t([0-9]{1,})\t(?P<cookiename>.+)\t(?P<cookievalue>.+)'
-    )  # https://github.com/streamlink/streamlink/issues/3370#issuecomment-846261921
+    )
 
     with open(path, 'r') as f:
         lines = f.readlines()
