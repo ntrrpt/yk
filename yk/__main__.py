@@ -17,19 +17,14 @@ try:
 except ImportError:
     pass
 
+
 r"""
 todo:
     - web api
     - fix twitch chat
-    - str / dlp for 'is_alive'
-    - apprise one.yml
-    - except tomls
-    - url as pos args
+
     - remove stopwatch-py ??? !!!!!!!!!!!!!!!!
     - argparse groups !!!!!!!!!!!!
-    - yta / str / dlp mode for each channel
-    - binary via pyinstaller or smth 
-     \_ github actions maybe
 """
 
 #########################
@@ -79,45 +74,41 @@ def main():
     ADD = arg.add_argument
     ENV = os.getenv
 
+    def SENV(env, fallback=None, sp_char=' '):
+        return ENV(env, fallback).split(sp_char)
+
     # fmt: off
-    ADD('-i', '--input',   nargs='+', default=[], help='files with channels/streams (list1.toml, /root/list2.toml)') #TODO:str &&&&&&&&&&&&&&&
-    ADD('-o', '--output', type=Path, default=ENV("YK_OUTPUT", '.'), help='stream output folder')
-    ADD('-l', '--log',    type=Path, default=ENV("YK_LOG", '.'),    help='log output folder')
-    ADD('-d', '--delay',  type=int,  default=ENV("YK_DELAY", 15),   help='streams check delay')
-    ADD('-p', '--proxy',   nargs='+', default=[], help='proxies (socks5://user:pass@127.0.0.1:1080)')
-    ADD('-a', '--apprise', nargs='+', default=[], help='apprise configs (.yml)')
-    ADD('-c', '--cookies', type=Path, default=ENV("YK_COOKIES", ''),                     help='path to cookies.txt (netscape format)')
-    ADD('-b', '--bgutil',  type=str,  default=ENV("YK_BGUTIL", 'http://127.0.0.1:4416'), help='bgutil-ytdlp-pot-provider url')
+    bgutil_def_addr = 'http://127.0.0.1:4416'
 
-    ADD("--chk", type=str, choices=["dlp", "str"],        help="live-checking method")
-    ADD("--rec", type=str, choices=["str", "yta", "dlp"], help="recording method")
+    ADD("urls", nargs="*", type=str)
 
-    ADD('--str-args', type=str, default=ENV("YK_ARGS_STREAMLINK", C_STREAMLINK), help='streamlink cli arguments')
-    ADD('--dlp-args', type=str, default=ENV("YK_ARGS_YTDLP", C_YTDLP),           help='yt-dlp cli arguments')
-    ADD('--yta-args', type=str, default=ENV("YK_ARGS_YTARCHIVE", C_YTARCHIVE),   help='ytarchive cli arguments')
+    ADD('-i', '--input',   nargs='+', default=SENV('YK_INPUT', ''),      help='dirs / files with channels (list.toml, /tomls)') 
+    ADD('-o', '--output',  type=str,  default=ENV("YK_OUTPUT", ''),      help='stream output folder')
+    ADD('-l', '--log',     type=str,  default=ENV("YK_LOG", 'DISABLED'), help='log output folder / file')
 
-    ADD('--debug', action='store_true', help='verbose output')
-    ADD('--trace', action='store_true', help='verbosest output')
+    ADD('-d', '--delay',   type=int,  default=ENV("YK_DELAY", 15),               help='streams check delay')
+    ADD('-p', '--proxy',   nargs='+', default=SENV('YK_PROXIES', ''),            help='proxies')
+    ADD('-a', '--apprise', type=str,  default=ENV("YK_APPRISE", ''),             help='apprise config (url or .yml)')
+    ADD('-c', '--cookies', type=str,  default=ENV("YK_COOKIES", ''),             help='path to cookies.txt (netscape format)')
+    ADD('-b', '--bgutil',  type=str,  default=ENV("YK_BGUTIL", bgutil_def_addr), help='bgutil-ytdlp-pot-provider url')
+
+    ADD('--str-args',      type=str,  default=ENV("YK_ARGS_STREAMLINK", C_STREAMLINK), help='streamlink cli arguments')
+    ADD('--dlp-args',      type=str,  default=ENV("YK_ARGS_YTDLP", C_YTDLP),           help='yt-dlp cli arguments')
+    ADD('--yta-args',      type=str,  default=ENV("YK_ARGS_YTARCHIVE", C_YTARCHIVE),   help='ytarchive cli arguments')
+
+    ADD("--chk",           type=str,  choices=["dlp", "str"],        help="live-checking method")
+    ADD("--rec",           type=str,  choices=["str", "yta", "dlp"], help="recording method")
+
+    ADD('--debug',         action='store_true', help='verbose output')
+    ADD('--trace',         action='store_true', help='verbosest output')
     # fmt: on
 
     args = arg.parse_args()
-    args.output = args.output.resolve()  # subprocess pwd fix
-
-    for var, target in [
-        ('YK_INPUT', args.input),
-        ('YK_PROXIES', args.proxy),
-        ('YK_APPRISE', args.apprise),
-    ]:
-        env = ENV(var, '')
-        if env:
-            target += env.split()
+    # print(args.urls)
+    # sys.exit()
 
     #########################
     ## logging
-
-    # logging in dir/%Y-%m-%d.log if --log=<dir>
-    if args.log.is_dir():
-        args.log = args.log / dt_now('%Y-%m-%d.log')
 
     log.remove()
 
@@ -138,9 +129,12 @@ def main():
         )
 
     log.add(sys.stderr, level=log_lvl, format=log_fmt)
-    log.add(
-        args.log, level=log_lvl, format=log_fmt, encoding='utf-8'
-    )  # TODO: disable logging
+
+    if args.log != 'DISABLED':
+        if Path(args.log).is_dir():
+            args.log = args.log / dt_now('%Y-%m-%d.log')
+
+        log.add(args.log, level=log_lvl, format=log_fmt, encoding='utf-8')
 
     #########################
     ## envs
@@ -151,10 +145,9 @@ def main():
         ['YK_ARGS_YTARCHIVE', args.yta_args],
         ['------------------', ' '],
         ['YK_INPUT', args.input],
+        ['YK_OUTPUT', args.output],
         ['YK_PROXIES', args.proxy],
         ['YK_APPRISE', args.apprise],
-        ['------------------', ' '],
-        ['YK_OUTPUT', args.output],
         ['YK_LOG', args.log],
         ['YK_DELAY', args.delay],
         ['YK_COOKIES', args.cookies],
