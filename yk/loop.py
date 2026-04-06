@@ -203,7 +203,7 @@ def main(args):
                     log.debug(f'start recording: {ch}', cfg=cfg)
 
                     if cfg['delete']:
-                        config.parse_configs(args.input, cfg, args=args)
+                        config.parse(args.input, cfg, args=args)
 
                     cfg['event'] = unload
                     t = threading.Thread(
