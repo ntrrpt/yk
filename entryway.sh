@@ -12,5 +12,5 @@ chown -R $USER_ID:$GROUP_ID $YK_INPUT
 chown -R $USER_ID:$GROUP_ID $YK_OUTPUT
 
 CMD="gosu $USER_ID python -m yk"
-echo "exec: $CMD $*"
+echo "cmd: $CMD $*"
 $CMD "$@"

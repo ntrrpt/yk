@@ -16,7 +16,7 @@ services:
       - ./:/out
       - ./lists/yt.txt:/src/yt.txt
       # ./cookies.txt:/cookies.txt
-      # ./apprise.yml:/apprise/apprise.yml
+      # ./apprise.yml:/apprise.yml
 
       # po token extractor plugin 
       # - ./bgutil-ytdlp-pot-provider.zip:/etc/yt-dlp/plugins/bgutil-ytdlp-pot-provider.zip
