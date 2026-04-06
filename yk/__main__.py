@@ -22,7 +22,7 @@ r"""
 todo:
     - web api
     - fix twitch chat
-
+    - delay when all streams is recording
     - remove stopwatch-py ??? !!!!!!!!!!!!!!!!
     - argparse groups !!!!!!!!!!!!
 """
