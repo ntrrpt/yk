@@ -16,7 +16,7 @@ from .util import YTA_Q, con, pf
 def parse(i: list = [], args=None, cfg_to_del: dict = {}):
     o = []
 
-    for file in i:
+    for file in filter(None, i):
         toml = {}
 
         #########################
@@ -26,11 +26,14 @@ def parse(i: list = [], args=None, cfg_to_del: dict = {}):
             if Path(file).is_file():
                 with open(file, 'rb') as f:
                     toml = tomllib.load(f)
-                    if not toml:
-                        continue
+                    assert toml
 
             elif is_url(file):
                 toml = {file: {}}
+
+            else:
+                log.error(f'skipping invalid url: {file}', i=i)
+                continue
 
         except tomllib.TOMLDecodeError as ex:
             log.exception(f'toml decode error in {file!r}, {ex}')
