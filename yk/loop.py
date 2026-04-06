@@ -156,7 +156,7 @@ def main(args):
                     if util.sum_mtime(args.input) == mtimes:
                         time.sleep(1)
 
-            channels = config.parse(args.urls + args.input, args=args)
+            channels = config.parse(i=args.urls + args.input, args=args)
             if not channels:
                 log.error('no channels for monitoring', input=args.input)
                 if first_launch:
@@ -203,7 +203,9 @@ def main(args):
                     log.debug(f'start recording: {ch}', cfg=cfg)
 
                     if cfg['delete']:
-                        config.parse(args.input, cfg, args=args)
+                        config.parse(
+                            i=args.urls + args.input, args=args, cfg_to_del=cfg
+                        )
 
                     cfg['event'] = unload
                     t = threading.Thread(
