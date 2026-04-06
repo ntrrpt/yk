@@ -23,6 +23,7 @@ todo:
     - web api
     - fix twitch chat
     - delay when all streams is recording
+    - todo default chk / rec
     - remove stopwatch-py ??? !!!!!!!!!!!!!!!!
     - argparse groups !!!!!!!!!!!!
 """
@@ -131,10 +132,11 @@ def main():
     log.add(sys.stderr, level=log_lvl, format=log_fmt)
 
     if args.log != 'DISABLED':
-        if Path(args.log).is_dir():
-            args.log = args.log / dt_now('%Y-%m-%d.log')
+        log_path = Path(args.log)
+        if log_path.is_dir():
+            log_path = log_path / dt_now('%Y-%m-%d.log')
 
-        log.add(args.log, level=log_lvl, format=log_fmt, encoding='utf-8')
+        log.add(log_path, level=log_lvl, format=log_fmt, encoding='utf-8')
 
     #########################
     ## envs
