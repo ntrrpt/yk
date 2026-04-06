@@ -45,7 +45,7 @@ RUN ln -s /yk/.tools/yt-dlp/bin/yt-dlp /usr/local/bin/yt-dlp
 ENV PATH="/yk/.venv/bin:$PATH" \
     YK_COOKIES=/cookies.txt \
     YK_APPRISE=/apprise.yml \
-    YK_INPUT=/lists \
+    YK_INPUT=/list.toml \
     YK_OUTPUT=/out \
     YK_LOG=/out
 

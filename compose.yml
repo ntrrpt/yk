@@ -1,4 +1,19 @@
 services:
+  tw:
+    container_name: tw
+
+    image: yk-custom
+    restart: unless-stopped
+    tty: true
+
+    environment:
+      YK_DELAY: 15
+    build:
+      context: https://github.com/ntrrpt/yk.git
+    volumes:
+      - ./:/out
+      - ./lists/tw.toml:/list.toml
+
   yt:
     container_name: yt
 
@@ -9,37 +24,24 @@ services:
 
     environment:
       YK_PROXIES: socks5://127.0.0.1:1080
-      YK_DELAY: 300 # big delay for youtube
+      # gid/pid for non-root users
+      GID: 1000 
+      PID: 1000
+      # big delay for youtube
+      YK_DELAY: 300 
     build:
       context: https://github.com/ntrrpt/yk.git
     volumes:
       - ./:/out
-      - ./lists/yt.txt:/src/yt.txt
+      - ./lists/yt.toml:/list.toml
       # ./cookies.txt:/cookies.txt
       # ./apprise.yml:/apprise.yml
 
-      # po token extractor plugin 
+      # po token extractor plugin (https://github.com/Brainicism/bgutil-ytdlp-pot-provider)
       # - ./bgutil-ytdlp-pot-provider.zip:/etc/yt-dlp/plugins/bgutil-ytdlp-pot-provider.zip
 
-    command: --yta
-
-  tw:
-    container_name: tw
-
-    image: yk-custom
-    restart: unless-stopped
-    tty: true
-
-    environment:
-      YK_DELAY: 15
-      YK_LOG: "/out/log.txt"
-      GID: 1000
-      PID: 1000
-    build:
-      context: https://github.com/ntrrpt/yk.git
-    volumes:
-      - ./:/out
-      - ./lists/tw.txt:/src/tw.txt
+    # use 'yt-dlp' as checker and 'ytarchive' as recorder
+    command: --chk dlp --rec yta
 
 #  bgutil:
 #    image: brainicism/bgutil-ytdlp-pot-provider
