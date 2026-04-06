@@ -69,7 +69,8 @@ def con(lst, string):
 
 
 def sum_mtime(files):
-    return sum(Path(f).stat().st_mtime for f in files)
+    mtimes = [Path(f).stat().st_mtime for f in files if Path(f).is_file()]
+    return sum(mtimes)
 
 
 def str_cut(string: str, letters: int, postfix: str = '...'):
