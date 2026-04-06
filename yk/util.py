@@ -30,7 +30,7 @@ YTA_Q = [
 ]
 
 
-def get_apobj(payload: Path = Path()):
+def get_apobj(payload: str):
     apobj = apprise.Apprise()
 
     try:
@@ -38,7 +38,7 @@ def get_apobj(payload: Path = Path()):
             raise
 
         cfg = apprise.AppriseConfig()
-        cfg.add(str(payload))
+        cfg.add(payload)
         apobj.add(cfg)
 
     except:  # noqa: E722
