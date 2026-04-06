@@ -165,8 +165,6 @@ def main(args):
                 _sleep()
                 continue
 
-            log.error(util.pf(channels))
-
             for i, (ch, cfg) in enumerate(channels.items(), start=1):
                 if util.sum_mtime(args.input) != mtimes:
                     log.info(
@@ -175,6 +173,12 @@ def main(args):
                     break
 
                 if is_running(cfg['url']):
+                    if len(channels) == threading.active_count() - 1:
+                        log.debug(
+                            'everything is online',
+                            threads=get_threads(),
+                        )
+                        _sleep()
                     continue
 
                 stream = None
@@ -223,8 +227,9 @@ def main(args):
 
                 _sleep()
 
-                if len(channels) == 1:
-                    _sleep()  # rate-limit for single-item config
+                # rate-limit for single-item config
+                # if len(channels) == 1:
+                #    _sleep()
 
             first_launch = False
 
