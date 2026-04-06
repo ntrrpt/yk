@@ -167,7 +167,7 @@ def parse(i: list = [], args=None, cfg_to_del: dict = {}):
                 )
                 continue
 
-            for i in ('u', 'f', 'r', 'q', 'd', 'h', 'o'):
+            for i in ('u', 'f', 'r', 'q', 'd', 'h', 'o', 'chk', 'rec'):
                 if i in cfg:
                     del toml[item][i]
 
