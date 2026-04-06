@@ -28,14 +28,14 @@ def record(
     quality: str = 'best',  # quality of stream
     output: str = '',  # output path
     folder: str = '',  # subpath (output/folder)
-    regex_title: bool = '',  # regex for stream title
-    regex_desc: bool = '',  # regex for stream description
-    proxy: bool = '',  # proxy for all connections (except apprise)
-    apprise: bool = '',  # apprise url / path to yaml
-    cookies: bool = '',  # path to cookies file (netscape format)
-    bgutil: bool = '',  # url to potoken server (bgutil compatible)
-    recorder: bool = '',  # recording tool
-    arguments: bool = '',  # recording tool cli args
+    regex_title: str = '',  # regex for stream title
+    regex_desc: str = '',  # regex for stream description
+    proxy: str = '',  # proxy for all connections (except apprise)
+    apprise: str = '',  # apprise url / path to yaml
+    cookies: str = '',  # path to cookies file (netscape format)
+    bgutil: str = '',  # url to potoken server (bgutil compatible)
+    recorder: str = '',  # recording tool
+    arguments: str = '',  # recording tool cli args
     # non-cfg args
     event: threading.Event = threading.Event(),  # for graceful shutdown
     # unused (compatiblity for **cfg)
