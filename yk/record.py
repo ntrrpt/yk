@@ -18,8 +18,7 @@ from loguru import logger as log
 from stopwatch import Stopwatch
 
 from jc.conv import conv as jc_conv
-
-from .util import dt_now, esc, fesc, get_apobj, pf, timedelta_pretty, yt_dw_thumb
+from yk import util
 
 
 def record(
@@ -95,7 +94,7 @@ def record(
         str_raw, _ = p.stdout, p.stderr
     except sp.CalledProcessError:
         cmd = ' '.join(c_info)
-        out = fesc(p.stdout + p.stderr)
+        out = util.fesc(p.stdout + p.stderr)
 
         log.error(f'failed to get info\n{out}', cfg=_cfg, cmd=cmd)
         sys.exit(1)
@@ -124,8 +123,8 @@ def record(
             str_title = str_json['title']
             str_user = str_json['uploader']
 
-    str_title = esc(str_title)
-    str_user = esc(str_user)
+    str_title = util.esc(str_title)
+    str_user = util.esc(str_user)
 
     # regex filtering
     if regex_title:
@@ -137,10 +136,10 @@ def record(
             return
 
     # [YY_MM_DD hh_mm_ss] username - livestream title
-    str_name = esc(f'[{dt_now()}] {str_user} - {str_title}')
+    str_name = util.esc(f'[{util.dt_now()}] {str_user} - {str_title}')
 
     # folder for livestream
-    str_dir = Path(output) / esc(folder) / f'[live] {str_name}'
+    str_dir = Path(output) / util.esc(folder) / f'[live] {str_name}'
     str_dir.mkdir(parents=True, exist_ok=True)
 
     # template for livestream files (*.json, *.conv, *.log, ...)
@@ -148,11 +147,11 @@ def record(
 
     # saving stream json
     with open(str_blank + '.info', 'w', encoding='utf-8') as f:
-        f.write(pf(str_json))
+        f.write(util.pf(str_json))
 
     # download youtube thumb
     if 'youtube' in str_json['extractor']:
-        yt_dw_thumb(
+        util.yt_dw_thumb(
             path=str_blank + '.jpg',
             video_id=str_json['id'],
             proxy=proxy,
@@ -165,14 +164,14 @@ def record(
     if rls_ts and (isinstance(rls_ts, int) or rls_ts.isdigit()):  # TODO: TZ
         rls_dt = datetime.fromtimestamp(int(str_json['release_timestamp']))
         delta = datetime.now() - rls_dt
-        since_str = f'\n(online for {timedelta_pretty(delta)})'
+        since_str = f'\n(online for {util.timedelta_pretty(delta)})'
 
     # notify and log
     log.success(
         f'[ONLINE] ({str_user} - {str_title + since_str.replace("\n", " ")}', cfg=_cfg
     )
 
-    apobj = get_apobj(apprise)
+    apobj = util.get_apobj(apprise)
     apobj.notify(title=f'[ONLINE] {str_user}', body=str_title + since_str)
 
     match recorder:
@@ -333,7 +332,7 @@ def record(
 
                     if p == 0:
                         for file in files_to_delete:
-                            delete(file)
+                            util.delete(file)
                         break
 
                     if p is not None:
@@ -357,4 +356,4 @@ def record(
         log.exception(f'jc error: {str(ex)}')
 
     # remove [live] prefix
-    str_dir.rename(Path(output) / esc(folder) / str_name)
+    str_dir.rename(Path(output) / util.esc(folder) / str_name)
