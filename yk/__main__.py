@@ -22,8 +22,6 @@ r"""
 todo:
     - web api
     - fix twitch chat
-    - delay when all streams is recording
-    - todo default chk / rec
     - remove stopwatch-py ??? !!!!!!!!!!!!!!!!
     - argparse groups !!!!!!!!!!!!
 """
@@ -71,7 +69,7 @@ def main():
     #########################
     ## args
 
-    arg = argparse.ArgumentParser()
+    arg = argparse.ArgumentParser('yk')
     ADD = arg.add_argument
     ENV = os.getenv
 
@@ -83,13 +81,13 @@ def main():
 
     ADD("urls", nargs="*", type=str)
 
-    ADD('-i', '--input',   nargs='+', default=SENV('YK_INPUT', ''),      help='dirs / files with channels (list.toml, /tomls)') 
+    ADD('-i', '--input',   nargs='+', default=SENV('YK_INPUT', ''),      help='lists with channels (.toml)') 
     ADD('-o', '--output',  type=str,  default=ENV("YK_OUTPUT", ''),      help='stream output folder')
-    ADD('-l', '--log',     type=str,  default=ENV("YK_LOG", 'DISABLED'), help='log output folder / file')
+    ADD('-l', '--log',     type=str,  default=ENV("YK_LOG", 'DISABLED'), help='log output (path to folder / file)')
 
-    ADD('-d', '--delay',   type=int,  default=ENV("YK_DELAY", 15),               help='streams check delay')
+    ADD('-d', '--delay',   type=int,  default=ENV("YK_DELAY", 60),               help='delay beetwen checks')
     ADD('-p', '--proxy',   nargs='+', default=SENV('YK_PROXIES', ''),            help='proxies')
-    ADD('-a', '--apprise', type=str,  default=ENV("YK_APPRISE", ''),             help='apprise config (url or .yml)')
+    ADD('-a', '--apprise', type=str,  default=ENV("YK_APPRISE", ''),             help='apprise config (url or .yml file)')
     ADD('-c', '--cookies', type=str,  default=ENV("YK_COOKIES", ''),             help='path to cookies.txt (netscape format)')
     ADD('-b', '--bgutil',  type=str,  default=ENV("YK_BGUTIL", bgutil_def_addr), help='bgutil-ytdlp-pot-provider url')
 
@@ -97,8 +95,8 @@ def main():
     ADD('--dlp-args',      type=str,  default=ENV("YK_ARGS_YTDLP", C_YTDLP),           help='yt-dlp cli arguments')
     ADD('--yta-args',      type=str,  default=ENV("YK_ARGS_YTARCHIVE", C_YTARCHIVE),   help='ytarchive cli arguments')
 
-    ADD("--chk",           type=str,  choices=["dlp", "str"],        help="live-checking method")
-    ADD("--rec",           type=str,  choices=["str", "yta", "dlp"], help="recording method")
+    ADD("--chk",           type=str,  default='dlp', choices=["dlp", "str"],        help="live-checking method")
+    ADD("--rec",           type=str,  default='dlp', choices=["str", "yta", "dlp"], help="recording method")
 
     ADD('--debug',         action='store_true', help='verbose output')
     ADD('--trace',         action='store_true', help='verbosest output')

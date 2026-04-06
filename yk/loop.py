@@ -30,7 +30,7 @@ def is_running(name: str = ''):
     threads = get_threads()
 
     if name in threads:
-        log.trace('thread running', name=name, threads=threads)
+        log.trace('thread RUNNING', name=name, threads=threads)
         return True
 
     log.trace('thread not running', name=name, threads=threads)
