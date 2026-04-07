@@ -17,7 +17,6 @@ try:
 except ImportError:
     pass
 
-
 r"""
 todo:
     - web api
@@ -86,7 +85,7 @@ def main():
     ADD('-l', '--log',     type=str,  default=ENV("YK_LOG", 'DISABLED'), help='log output (path to folder / file)')
 
     ADD('-d', '--delay',   type=int,  default=ENV("YK_DELAY", 60),               help='delay beetwen checks')
-    ADD('-p', '--proxy',   nargs='+', default=SENV('YK_PROXIES', ''),            help='proxies')
+    ADD('-p', '--proxy',   nargs='+', default=SENV('YK_PROXY', ''),            help='proxies')
     ADD('-a', '--apprise', type=str,  default=ENV("YK_APPRISE", ''),             help='apprise config (url or .yml file)')
     ADD('-c', '--cookies', type=str,  default=ENV("YK_COOKIES", ''),             help='path to cookies.txt (netscape format)')
     ADD('-b', '--bgutil',  type=str,  default=ENV("YK_BGUTIL", bgutil_def_addr), help='bgutil-ytdlp-pot-provider url')
@@ -103,8 +102,6 @@ def main():
     # fmt: on
 
     args = arg.parse_args()
-    # print(args.urls)
-    # sys.exit()
 
     #########################
     ## logging
@@ -146,7 +143,7 @@ def main():
         ['------------------', ' '],
         ['YK_INPUT', args.input],
         ['YK_OUTPUT', args.output],
-        ['YK_PROXIES', args.proxy],
+        ['YK_PROXY', args.proxy],
         ['YK_APPRISE', args.apprise],
         ['YK_LOG', args.log],
         ['YK_DELAY', args.delay],
@@ -164,7 +161,6 @@ def main():
         ),
     )
 
-    # TODO: select custom dir
     pwdir = Path(__file__).resolve().parent
     os.environ['PATH'] = os.pathsep.join([str(pwdir), os.environ['PATH']])
 
