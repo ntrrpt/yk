@@ -23,7 +23,7 @@ ENV UV_TOOL_DIR=/yk/.tools \
 
 RUN uv tool install yt-dlp[default]
 RUN uv tool install streamlink
-RUN uv tool install git+https://github.com/Bonz4i/chat-downloader@683efff506aff611ecdc54667e96f7a23e3748d0 --with pysocks
+RUN uv tool install git+https://github.com/ntrrpt/chat-downloader@db0ea8ca1759ecbb8390288c4d9adc4849d139b6 --with pysocks
 
 COPY pyproject.toml uv.lock .
 RUN uv sync
