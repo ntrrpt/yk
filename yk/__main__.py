@@ -150,7 +150,9 @@ def main():
 
     env_tab = [
         ['YK_ARGS_STREAMLINK', args.str_args],
+        ['------------------', ' '],
         ['YK_ARGS_YTDLP', args.dlp_args],
+        ['------------------', ' '],
         ['YK_ARGS_YTARCHIVE', args.yta_args],
         ['------------------', ' '],
         ['YK_INPUT', args.input],
@@ -165,13 +167,17 @@ def main():
 
     log.debug(
         'envs:\n'
-        + tabulate(  # TODO: word wrapping
+        + tabulate(
             env_tab,
             colalign=('right', 'left'),
             tablefmt='plain',
             maxcolwidths=[None, 100],
+            break_long_words=False,
+            break_on_hyphens=False,
         ),
     )
+
+    sys.exit(1)
 
     pwdir = Path(__file__).resolve().parent
     os.environ['PATH'] = os.pathsep.join([str(pwdir), os.environ['PATH']])
