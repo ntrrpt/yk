@@ -179,8 +179,6 @@ def main():
         ),
     )
 
-    sys.exit(1)
-
     pwdir = Path(__file__).resolve().parent
     os.environ['PATH'] = os.pathsep.join([str(pwdir), os.environ['PATH']])
 
