@@ -8,6 +8,7 @@ services:
 
     environment:
       YK_DELAY: 15
+      YK_INPUT: /list.toml
     build:
       context: https://github.com/ntrrpt/yk.git
     volumes:
@@ -29,6 +30,7 @@ services:
       PID: 1000
       # big delay for youtube
       YK_DELAY: 300 
+      YK_INPUT: /list.toml
     build:
       context: https://github.com/ntrrpt/yk.git
     volumes:

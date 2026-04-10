@@ -8,7 +8,8 @@ from pathlib import Path
 from loguru import logger as log
 from tabulate import tabulate
 
-from .util import dt_now
+from . import util
+from .serve import main as loop_main
 
 try:
     import beautiful_traceback
@@ -76,19 +77,19 @@ def main():
         return ENV(env, fallback).split(sp_char)
 
     # fmt: off
-    bgutil_def_addr = 'http://127.0.0.1:4416'
+    bg = "http://127.0.0.1:4416"
 
     ADD("urls", nargs="*", type=str)
 
     ADD('-i', '--input',   nargs='+', default=SENV('YK_INPUT', ''),      help='lists with channels (.toml)') 
     ADD('-o', '--output',  type=str,  default=ENV("YK_OUTPUT", ''),      help='stream output folder')
     ADD('-l', '--log',     type=str,  default=ENV("YK_LOG", 'DISABLED'), help='log output (path to folder / file)')
-
-    ADD('-d', '--delay',   type=int,  default=ENV("YK_DELAY", 60),               help='delay beetwen checks')
-    ADD('-p', '--proxy',   nargs='+', default=SENV('YK_PROXY', ''),            help='proxies')
-    ADD('-a', '--apprise', type=str,  default=ENV("YK_APPRISE", ''),             help='apprise config (url or .yml file)')
-    ADD('-c', '--cookies', type=str,  default=ENV("YK_COOKIES", ''),             help='path to cookies.txt (netscape format)')
-    ADD('-b', '--bgutil',  type=str,  default=ENV("YK_BGUTIL", bgutil_def_addr), help='bgutil-ytdlp-pot-provider url')
+    ADD('-q', '--quality', type=str,  default=ENV("YK_QUALITY", 'best'), help='default recording quality')
+    ADD('-d', '--delay',   type=int,  default=ENV("YK_DELAY", 60),       help='delay beetwen checks')
+    ADD('-p', '--proxy',   nargs='+', default=SENV('YK_PROXY', ''),      help='proxies')
+    ADD('-a', '--apprise', type=str,  default=ENV("YK_APPRISE", ''),     help='apprise config (url or .yml file)')
+    ADD('-c', '--cookies', type=str,  default=ENV("YK_COOKIES", ''),     help='path to cookies.txt (netscape format)')
+    ADD('-b', '--bgutil',  type=str,  default=ENV("YK_BGUTIL", bg),      help='bgutil-ytdlp-pot-provider url')
 
     ADD('--str-args',      type=str,  default=ENV("YK_ARGS_STREAMLINK", C_STREAMLINK), help='streamlink cli arguments')
     ADD('--dlp-args',      type=str,  default=ENV("YK_ARGS_YTDLP", C_YTDLP),           help='yt-dlp cli arguments')
@@ -129,7 +130,7 @@ def main():
     if args.log != 'DISABLED':
         log_path = Path(args.log)
         if log_path.is_dir():
-            log_path = log_path / dt_now('%Y-%m-%d.log')
+            log_path = log_path / util.dt_now('%Y-%m-%d.log')
 
         log.add(log_path, level=log_lvl, format=log_fmt, encoding='utf-8')
 
@@ -164,9 +165,7 @@ def main():
     pwdir = Path(__file__).resolve().parent
     os.environ['PATH'] = os.pathsep.join([str(pwdir), os.environ['PATH']])
 
-    from .loop import main as loop_main
-
-    loop_main(args)
+    log.trace(f'ret_code: {loop_main(args)}')
 
 
 if __name__ == '__main__':

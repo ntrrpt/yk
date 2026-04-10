@@ -6,8 +6,7 @@ RUN apk add --no-cache --progress git
 RUN git clone --revision=742674da1fa618365074de714b9517cc79d1bb38 https://github.com/dreammu/ytarchive /yta/git
 RUN go build -C /yta/git -ldflags="-s -w" -o /yta/bin -v
 
-
-# yk .venv
+# .venv & tools
 FROM python:3.13-alpine AS yk_builder
 WORKDIR /yk
 
@@ -24,13 +23,13 @@ ENV UV_TOOL_DIR=/yk/.tools \
 
 RUN uv tool install yt-dlp[default]
 RUN uv tool install streamlink
+RUN uv tool install git+https://github.com/Bonz4i/chat-downloader@683efff506aff611ecdc54667e96f7a23e3748d0 --with pysocks
 
 COPY pyproject.toml uv.lock .
 RUN uv sync
 
-
-# final app
-FROM python:3.13-alpine
+# final img
+FROM python:3.13-alpine AS yk
 WORKDIR /yk
 
 RUN apk add --no-cache --progress deno bash curl ffmpeg gosu
@@ -39,13 +38,17 @@ COPY --from=ytarchive_builder /yta/bin /usr/local/bin/ytarchive
 COPY --from=yk_builder /yk /yk
 COPY . .
 
-RUN ln -s /yk/.tools/streamlink/bin/streamlink /usr/local/bin/streamlink 
-RUN ln -s /yk/.tools/yt-dlp/bin/yt-dlp /usr/local/bin/yt-dlp 
+RUN <<-EOT sh
+	ln -s /yk/.tools/chat-downloader/bin/chat_downloader /usr/local/bin/chat_downloader
+	ln -s /yk/.tools/streamlink/bin/streamlink /usr/local/bin/streamlink 
+	ln -s /yk/.tools/yt-dlp/bin/yt-dlp /usr/local/bin/yt-dlp
+    touch /cookies.txt /apprise.yml /list.toml
+    mkdir /out /.cache
+EOT
 
 ENV PATH="/yk/.venv/bin:$PATH" \
     YK_COOKIES=/cookies.txt \
     YK_APPRISE=/apprise.yml \
-    YK_INPUT=/list.toml \
     YK_OUTPUT=/out \
     YK_LOG=/out
 

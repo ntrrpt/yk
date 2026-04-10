@@ -33,6 +33,10 @@ def conv(path, logging=False):
     with open(path, 'r', encoding='utf-8') as file:
         CHAT = json.load(file)
 
+    if not CHAT:
+        log(f'{path}: empty chat ')
+        return
+
     ##################################################################
     #  type of stream (youtube / twitch)
 
@@ -63,6 +67,10 @@ def conv(path, logging=False):
     all_time = 0
 
     for i, msg in enumerate(CHAT, start=1):
+        if not msg:
+            log(f'{i}: empty item ')
+            continue
+
         if 'message' not in msg:
             log(f'{i}: no message ')
             continue

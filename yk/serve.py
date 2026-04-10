@@ -3,15 +3,13 @@
 import json
 import shutil
 import subprocess as sp
-import sys
 import threading
 import time
 from pathlib import Path
 
 from loguru import logger as log
 
-from . import config, util
-from .record import record
+from . import config, record, util
 
 first_launch = True
 unload = threading.Event()
@@ -138,11 +136,11 @@ def main(args):
 
     if (args.rec == 'str' or args.chk == 'str') and not shutil.which('streamlink'):
         log.critical('streamlink not found, cannot continue')
-        sys.exit(1)
+        return 1
 
-    if not args.input:
+    if not args.input and not args.urls:
         log.critical('no channel lists, add some with "-i" argument')
-        sys.exit(1)
+        return 1
 
     log.info('started!')
 
@@ -160,7 +158,7 @@ def main(args):
             if not channels:
                 log.error('no channels for monitoring', input=args.input)
                 if first_launch:
-                    sys.exit(1)
+                    return 1
 
                 _sleep()
                 continue
@@ -213,7 +211,7 @@ def main(args):
 
                     cfg['event'] = unload
                     t = threading.Thread(
-                        target=record,
+                        target=record.main,
                         name=cfg['url'],
                         kwargs=cfg,
                     )
@@ -235,11 +233,10 @@ def main(args):
 
     except KeyboardInterrupt:
         unload.set()
+        log.warning('stopping...')
 
-        if threading.active_count():
-            log.warning('stopping...')
-            while threading.active_count() > 1:
-                time.sleep(1)
-                log.trace('stopping...', threads=get_threads())
+        while threading.active_count() > 1:
+            time.sleep(1)
+            log.trace('stopping...', threads=get_threads())
 
-        sys.exit(0)
+        return 0

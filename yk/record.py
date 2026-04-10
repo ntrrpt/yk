@@ -4,6 +4,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import signal
 import subprocess as sp
 import sys
@@ -21,7 +22,7 @@ from jc.conv import conv as jc_conv
 from yk import util
 
 
-def record(
+def main(
     # cfg args
     url: str = '',  # live-stream url
     quality: str = 'best',  # quality of stream
@@ -267,18 +268,22 @@ def record(
 
     c_chat = ['chat_downloader'] + c_chat + [str_json['webpage_url']]
 
-    log.debug(f'{recorder}: {" ".join(c)}')
-    log.debug(f'chat: {" ".join(c_chat)}')
-
     # video process
-    str_txt = open(str_blank + '.log', 'a')
-    str_proc = sp.Popen(c, stdout=str_txt, stderr=str_txt, cwd=str_dir)
-    str_pid = psutil.Process(str_proc.pid)
+    rec_txt = open(str_blank + '.log', 'a')
+    _rec_cmd_dbg = f'{recorder}: {" ".join(c)}'
+    log.debug(_rec_cmd_dbg)
+    # rec_txt.write(f'{_rec_cmd_dbg}\n')
+    rec_proc = sp.Popen(c, stdout=rec_txt, stderr=rec_txt, cwd=str_dir)
+    rec_pid = psutil.Process(rec_proc.pid)
 
-    # chat process
-    chat_txt = open(str_blank + '.chat', 'w')
-    chat_proc = sp.Popen(c_chat, stdout=chat_txt, stderr=chat_txt, cwd=str_dir)
-    chat_pid = psutil.Process(chat_proc.pid)
+    if shutil.which('chat_downloader'):
+        # chat process
+        chat_txt = open(str_blank + '.chat', 'w')
+        _chat_cmd_dbg = f'chat: {" ".join(c_chat)}'
+        log.debug(_chat_cmd_dbg)
+        # chat_txt.write(f'{_chat_cmd_dbg}\n')
+        chat_proc = sp.Popen(c_chat, stdout=chat_txt, stderr=chat_txt, cwd=str_dir)
+        chat_pid = psutil.Process(chat_proc.pid)
 
     # measure livestream duration
     sw = Stopwatch(2)
@@ -288,20 +293,20 @@ def record(
     while not event.is_set():
         time.sleep(1)
 
-        if not str_pid.is_running():
+        if not rec_pid.is_running():
             break
 
-        if str_pid.status() == psutil.STATUS_ZOMBIE:
+        if rec_pid.status() == psutil.STATUS_ZOMBIE:
             break
 
     total_time = timedelta(seconds=int(sw.duration))
 
     # shutdown stream process
-    if str_pid.is_running():
+    if rec_pid.is_running():
         if event.is_set():
-            os.kill(str_proc.pid, signal.SIGTERM)
+            os.kill(rec_proc.pid, signal.SIGTERM)
         else:
-            os.waitpid(str_proc.pid, 0)
+            os.waitpid(rec_proc.pid, 0)
             apobj.notify(title=f'[offline] {str_user} ({total_time})', body=str_title)
 
         log.info(f'[offline] ({str_user} - {str_title}) ', cfg=_cfg)
@@ -325,7 +330,7 @@ def record(
         if c_merge == '=C':
             log.error(f"can't find *ffmpeg.txt in {str_dir!r}", cfg=_cfg)
         else:
-            with sp.Popen(c_merge, stderr=str_txt) as proc:
+            with sp.Popen(c_merge, stderr=rec_txt) as proc:
                 while True:
                     time.sleep(1)
                     p = proc.poll()
@@ -340,14 +345,15 @@ def record(
                         break
 
     # shutdown chat process
-    if chat_pid.is_running():
-        if chat_pid.status() == psutil.STATUS_ZOMBIE:
-            os.waitpid(chat_proc.pid, 0)
+    if shutil.which('chat_downloader'):
         if chat_pid.is_running():
-            os.kill(chat_proc.pid, signal.SIGTERM)
+            if chat_pid.status() == psutil.STATUS_ZOMBIE:
+                os.waitpid(chat_proc.pid, 0)
+            if chat_pid.is_running():
+                os.kill(chat_proc.pid, signal.SIGTERM)
 
-    chat_txt.close()
-    str_txt.close()
+        chat_txt.close()
+    rec_txt.close()
 
     # prettify chat .json
     try:

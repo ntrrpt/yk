@@ -9,7 +9,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "apprise>=1.9.4",
-    "chat-downloader @ git+https://github.com/ntrrpt/chat-downloader.git@354931cbe2be7acc635f08a724e8f85f7b3f3dc2",
     "colorama>=0.4.6",
     "loguru>=0.7.3",
     "psutil>=7.0.0",
@@ -23,6 +22,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dw = [
+    "chat-downloader",
     "streamlink>=8.2.1",
     "yt-dlp>=2026.3.17",
 ]
@@ -36,3 +36,6 @@ dev = [
 [tool.ruff.format]
 quote-style = "single"
 line-ending = "lf"
+
+[tool.uv.sources]
+chat-downloader = { git = "https://github.com/Bonz4i/chat-downloader", rev = "683efff506aff611ecdc54667e96f7a23e3748d0" }
