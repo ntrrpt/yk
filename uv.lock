@@ -131,7 +131,7 @@ wheels = [
 [[package]]
 name = "chat-downloader"
 version = "0.2.8"
-source = { git = "https://github.com/Bonz4i/chat-downloader?rev=683efff506aff611ecdc54667e96f7a23e3748d0#683efff506aff611ecdc54667e96f7a23e3748d0" }
+source = { git = "https://github.com/ntrrpt/chat-downloader?rev=db0ea8ca1759ecbb8390288c4d9adc4849d139b6#db0ea8ca1759ecbb8390288c4d9adc4849d139b6" }
 dependencies = [
     { name = "colorlog" },
     { name = "docstring-parser" },
@@ -701,7 +701,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "apprise", specifier = ">=1.9.4" },
-    { name = "chat-downloader", marker = "extra == 'dw'", git = "https://github.com/Bonz4i/chat-downloader?rev=683efff506aff611ecdc54667e96f7a23e3748d0" },
+    { name = "chat-downloader", marker = "extra == 'dw'", git = "https://github.com/ntrrpt/chat-downloader?rev=db0ea8ca1759ecbb8390288c4d9adc4849d139b6" },
     { name = "colorama", specifier = ">=0.4.6" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "psutil", specifier = ">=7.0.0" },

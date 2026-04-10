@@ -21,7 +21,6 @@ except ImportError:
 r"""
 todo:
     - web api
-    - fix twitch chat
     - remove stopwatch-py ??? !!!!!!!!!!!!!!!!
     - argparse groups !!!!!!!!!!!!
 """
