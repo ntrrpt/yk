@@ -22,7 +22,8 @@ r"""
 todo:
     - web api
     - --enable-chat-downloader
-    - remove stopwatch-py ??? !!!!!!!!!!!!!!!!
+
+    - timestamp offset in jc.conv
 """
 
 #########################
@@ -70,6 +71,7 @@ def main():
 
     ap = argparse.ArgumentParser(
         'yk',
+        description='monitoring and recording livestreams',
         formatter_class=lambda prog: argparse.RawTextHelpFormatter(
             prog, max_help_position=35
         ),

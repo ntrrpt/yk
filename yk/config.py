@@ -22,7 +22,7 @@ def parse(i: list = [], args=None, cfg_to_del: dict = {}):
         #########################
         ## toml validation
 
-        try:  # TODO
+        try:
             if Path(file).is_file():
                 with open(file, 'rb') as f:
                     toml = tomllib.load(f)

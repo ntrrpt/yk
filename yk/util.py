@@ -167,7 +167,6 @@ def yt_dw_thumb(path: Path | str, video_id: str, proxy: str | None = None):
             return url
 
 
-# TODO: ressurect
 def _http_cookies_regex(path: Path | str):
     path = Path(path)
     if not path.is_file():
