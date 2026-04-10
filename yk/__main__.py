@@ -21,8 +21,8 @@ except ImportError:
 r"""
 todo:
     - web api
+    - --enable-chat-downloader
     - remove stopwatch-py ??? !!!!!!!!!!!!!!!!
-    - argparse groups !!!!!!!!!!!!
 """
 
 #########################
@@ -68,8 +68,13 @@ def main():
     #########################
     ## args
 
-    arg = argparse.ArgumentParser('yk')
-    ADD = arg.add_argument
+    ap = argparse.ArgumentParser(
+        'yk',
+        formatter_class=lambda prog: argparse.RawTextHelpFormatter(
+            prog, max_help_position=35
+        ),
+    )
+    ADD = ap.add_argument
     ENV = os.getenv
 
     def SENV(env, fallback=None, sp_char=' '):
@@ -81,27 +86,34 @@ def main():
     ADD("urls", nargs="*", type=str)
 
     ADD('-i', '--input',   nargs='+', default=SENV('YK_INPUT', ''),      help='lists with channels (.toml)') 
-    ADD('-o', '--output',  type=str,  default=ENV("YK_OUTPUT", ''),      help='stream output folder')
-    ADD('-l', '--log',     type=str,  default=ENV("YK_LOG", 'DISABLED'), help='log output (path to folder / file)')
-    ADD('-q', '--quality', type=str,  default=ENV("YK_QUALITY", 'best'), help='default recording quality')
-    ADD('-d', '--delay',   type=int,  default=ENV("YK_DELAY", 60),       help='delay beetwen checks')
-    ADD('-p', '--proxy',   nargs='+', default=SENV('YK_PROXY', ''),      help='proxies')
-    ADD('-a', '--apprise', type=str,  default=ENV("YK_APPRISE", ''),     help='apprise config (url or .yml file)')
-    ADD('-c', '--cookies', type=str,  default=ENV("YK_COOKIES", ''),     help='path to cookies.txt (netscape format)')
-    ADD('-b', '--bgutil',  type=str,  default=ENV("YK_BGUTIL", bg),      help='bgutil-ytdlp-pot-provider url')
+    ADD('-o', '--output',  type=str,  default=ENV("YK_OUTPUT", ''),      help='output folder')
+    ADD('-l', '--log',     type=str,  default=ENV("YK_LOG", 'DISABLED'), help='log to file (path to folder / file)')
+    ADD('--debug',         action='store_true', help='verbose output')
+    ADD('--trace',         action='store_true', help='verbosest output')
+
+    g = ap.add_argument_group('external tools options')
+    ADD = g.add_argument
+
+    ADD("--chk",           type=str,  default='dlp', choices=["str", "dlp"],        help="live-checking method")
+    ADD("--rec",           type=str,  default='dlp', choices=["str", "dlp", "yta"], help="recording method")
 
     ADD('--str-args',      type=str,  default=ENV("YK_ARGS_STREAMLINK", C_STREAMLINK), help='streamlink cli arguments')
     ADD('--dlp-args',      type=str,  default=ENV("YK_ARGS_YTDLP", C_YTDLP),           help='yt-dlp cli arguments')
     ADD('--yta-args',      type=str,  default=ENV("YK_ARGS_YTARCHIVE", C_YTARCHIVE),   help='ytarchive cli arguments')
 
-    ADD("--chk",           type=str,  default='dlp', choices=["dlp", "str"],        help="live-checking method")
-    ADD("--rec",           type=str,  default='dlp', choices=["str", "yta", "dlp"], help="recording method")
+    g = ap.add_argument_group('stream options')
+    ADD = g.add_argument
 
-    ADD('--debug',         action='store_true', help='verbose output')
-    ADD('--trace',         action='store_true', help='verbosest output')
+    ADD('-q', '--quality', type=str,  default=ENV("YK_QUALITY", 'best'), help='recording quality (default: best)')
+    ADD('-d', '--delay',   type=int,  default=ENV("YK_DELAY", 60),       help='delay beetwen checks (default: 60)')
+    ADD('-p', '--proxy',   nargs='+', default=SENV('YK_PROXY', ''),      help='proxies')
+    ADD('-a', '--apprise', type=str,  default=ENV("YK_APPRISE", ''),     help='apprise config (url or .yml file)')
+    ADD('-c', '--cookies', type=str,  default=ENV("YK_COOKIES", ''),     help='path to cookies.txt (netscape format)')
+    ADD('-b', '--bgutil',  type=str,  default=ENV("YK_BGUTIL", bg),      help='bgutil-ytdlp-pot-provider url')
+
     # fmt: on
 
-    args = arg.parse_args()
+    args = ap.parse_args()
 
     #########################
     ## logging
