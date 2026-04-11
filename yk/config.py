@@ -233,9 +233,12 @@ def parse(i: list = [], args=None, cfg_to_del: dict = {}):
             with open(file, 'rb') as f:
                 toml_or = tomllib.load(f)
 
-            for item, cfg in toml_or.copy().items():
-                if toml[item]['delete'] and toml[item]['url'] == cfg_to_del.get('url'):
-                    toml_or.pop(item)
+            for k, v in toml_or.copy().items():
+                if not isinstance(v, dict):
+                    continue
+
+                if toml[k]['delete'] and toml[k]['url'] == cfg_to_del.get('url'):
+                    toml_or.pop(k)
 
                     path = Path(file)
                     if not path.is_file():
@@ -248,7 +251,7 @@ def parse(i: list = [], args=None, cfg_to_del: dict = {}):
 
                     os.utime(path, (fst.st_atime, fst.st_mtime))
 
-                    log.warning(f'removed {item!r}')
+                    log.warning(f'removed {k!r}')
                     break
 
         log.trace(f'{file}:\n' + util.pf(toml))
