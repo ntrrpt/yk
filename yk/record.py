@@ -159,15 +159,19 @@ def main(
         )
 
     # append 'online for HH:MM:SS' to notify
-    since_str = ''
-    rls_ts = str_json.get('release_timestamp', 0)
+    rls_ts = str_json.get('release_timestamp') or 0
     if 'twitch' in str_json['extractor']:
-        rls_ts = str_json.get('timestamp', 0)
+        rls_ts = str_json.get('timestamp') or 0
 
+    epoch = str_json.get('epoch') or int(time.time())
+
+    since_str = ''
     if rls_ts:
-        rls_dt = datetime.fromtimestamp(int(rls_ts))
-        delta = datetime.now() - rls_dt
-        since_str = f'\n(online for {util.timedelta_pretty(delta)})'
+        rls_ts_td = datetime.fromtimestamp(rls_ts)
+        epoch_td = datetime.fromtimestamp(epoch)
+        delta_td = epoch_td - rls_ts_td
+
+        since_str = f'\n(online for {util.timedelta_pretty(delta_td)})'
 
     # notify and log
     log.success(
@@ -368,7 +372,7 @@ def main(
     # prettify chat .json
     if Path(str_blank + '.json').is_file():
         try:
-            jc_conv(str_blank + '.json', time_offset=int(time.time()) - rls_ts)
+            jc_conv(str_blank + '.json', time_offset=epoch - rls_ts)
         except Exception as ex:
             log.exception(f'jc error: {str(ex)}')
 
