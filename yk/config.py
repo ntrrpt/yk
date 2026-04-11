@@ -237,6 +237,9 @@ def parse(i: list = [], args=None, cfg_to_del: dict = {}):
                 if not isinstance(v, dict):
                     continue
 
+                if k not in toml:
+                    continue
+
                 if toml[k]['delete'] and toml[k]['url'] == cfg_to_del.get('url'):
                     toml_or.pop(k)
 
