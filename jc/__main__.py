@@ -25,6 +25,8 @@ def main():
     ADD = ap.add_argument
 
     ADD('files', nargs='*', type=str)
+    ADD('-o', '--offset', type=int, default=0, help='time offset in seconds')
+    ADD('-v', '--verbose', action='store_true', default=True, help='verbose output')
 
     args = ap.parse_args()
 
@@ -33,7 +35,7 @@ def main():
         sys.exit(1)
 
     for file in args.files:
-        conv(file, logging=True)
+        conv(file, logging=args.verbose, time_offset=args.offset)
 
 
 if __name__ == '__main__':

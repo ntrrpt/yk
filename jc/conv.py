@@ -9,7 +9,7 @@ from tabulate import tabulate
 from .util import append, con, str_cut, timedelta_pretty, write
 
 
-def conv(path, logging=False):
+def conv(path, time_offset=0, logging=False):
     def log(string, end='\n'):
         if logging:
             print(string, end=end)
@@ -64,7 +64,7 @@ def conv(path, logging=False):
     #  adding messages and users
 
     delay_time = 0
-    all_time = 0
+    total_time = time_offset * 1000000  # microseconds
 
     for i, msg in enumerate(CHAT, start=1):
         if not msg:
@@ -113,10 +113,10 @@ def conv(path, logging=False):
             delay_time = msg['timestamp']
 
         delta = msg['timestamp'] - delay_time
-        all_time += delta
+        total_time += delta
         delay_time = msg['timestamp']
 
-        timestr = timedelta_pretty(timedelta(microseconds=int(all_time)), ms_add=True)
+        timestr = timedelta_pretty(timedelta(microseconds=int(total_time)), ms_add=True)
         # datetime.datetime.fromtimestamp(history[i]['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
         MESSAGES.append(

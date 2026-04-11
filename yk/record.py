@@ -160,10 +160,12 @@ def main(
 
     # append 'online for HH:MM:SS' to notify
     since_str = ''
-    rls_ts = str_json.get('release_timestamp')
+    rls_ts = str_json.get('release_timestamp', 0)
+    if 'twitch' in str_json['extractor']:
+        rls_ts = str_json.get('timestamp', 0)
 
-    if rls_ts and (isinstance(rls_ts, int) or rls_ts.isdigit()):  # TODO: TZ
-        rls_dt = datetime.fromtimestamp(int(str_json['release_timestamp']))
+    if rls_ts:
+        rls_dt = datetime.fromtimestamp(int(rls_ts))
         delta = datetime.now() - rls_dt
         since_str = f'\n(online for {util.timedelta_pretty(delta)})'
 
@@ -268,20 +270,28 @@ def main(
 
     c_chat = ['chat_downloader'] + c_chat + [str_json['webpage_url']]
 
-    # video process
-    rec_txt = open(str_blank + '.log', 'a')
+    # record process
     _rec_cmd_dbg = f'{recorder}: {" ".join(c)}'
     log.debug(_rec_cmd_dbg)
-    # rec_txt.write(f'{_rec_cmd_dbg}\n')
+
+    rec_txt = open(str_blank + '.log', 'w')
+    rec_txt.write(f'{_rec_cmd_dbg}\n\n')
+    rec_txt.flush()
+
     rec_proc = sp.Popen(c, stdout=rec_txt, stderr=rec_txt, cwd=str_dir)
     rec_pid = psutil.Process(rec_proc.pid)
 
-    if shutil.which('chat_downloader'):
-        # chat process
-        chat_txt = open(str_blank + '.chat', 'w')
+    _chat_bin = shutil.which('chat_downloader')
+
+    # chat process
+    if _chat_bin:
         _chat_cmd_dbg = f'chat: {" ".join(c_chat)}'
         log.debug(_chat_cmd_dbg)
-        # chat_txt.write(f'{_chat_cmd_dbg}\n')
+
+        chat_txt = open(str_blank + '.chat', 'w')
+        chat_txt.write(f'{_chat_cmd_dbg}\n\n')
+        chat_txt.flush()
+
         chat_proc = sp.Popen(c_chat, stdout=chat_txt, stderr=chat_txt, cwd=str_dir)
         chat_pid = psutil.Process(chat_proc.pid)
 
@@ -343,9 +353,10 @@ def main(
                     if p is not None:
                         log.error(f'merge error: {str_dir}', cfg=_cfg)
                         break
+    rec_txt.close()
 
     # shutdown chat process
-    if shutil.which('chat_downloader'):
+    if _chat_bin:
         if chat_pid.is_running():
             if chat_pid.status() == psutil.STATUS_ZOMBIE:
                 os.waitpid(chat_proc.pid, 0)
@@ -353,13 +364,13 @@ def main(
                 os.kill(chat_proc.pid, signal.SIGTERM)
 
         chat_txt.close()
-    rec_txt.close()
 
     # prettify chat .json
-    try:
-        jc_conv(str_blank + '.json')
-    except Exception as ex:
-        log.exception(f'jc error: {str(ex)}')
+    if Path(str_blank + '.json').is_file():
+        try:
+            jc_conv(str_blank + '.json', time_offset=int(time.time()) - rls_ts)
+        except Exception as ex:
+            log.exception(f'jc error: {str(ex)}')
 
     # remove [live] prefix
     str_dir.rename(Path(output) / util.esc(folder) / str_name)

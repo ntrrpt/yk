@@ -21,9 +21,6 @@ except ImportError:
 r"""
 todo:
     - web api
-    - --enable-chat-downloader
-
-    - timestamp offset in jc.conv
 """
 
 #########################
@@ -90,6 +87,7 @@ def main():
     ADD('-i', '--input',   nargs='+', default=SENV('YK_INPUT', ''),      help='lists with channels (.toml)') 
     ADD('-o', '--output',  type=str,  default=ENV("YK_OUTPUT", ''),      help='output folder')
     ADD('-l', '--log',     type=str,  default=ENV("YK_LOG", 'DISABLED'), help='log to file (path to folder / file)')
+    ADD('-d', '--delay',   type=int,  default=ENV("YK_DELAY", 60),       help='delay beetwen checks (default: 60)')
     ADD('--debug',         action='store_true', help='verbose output')
     ADD('--trace',         action='store_true', help='verbosest output')
 
@@ -107,7 +105,6 @@ def main():
     ADD = g.add_argument
 
     ADD('-q', '--quality', type=str,  default=ENV("YK_QUALITY", 'best'), help='recording quality (default: best)')
-    ADD('-d', '--delay',   type=int,  default=ENV("YK_DELAY", 60),       help='delay beetwen checks (default: 60)')
     ADD('-p', '--proxy',   nargs='+', default=SENV('YK_PROXY', ''),      help='proxies')
     ADD('-a', '--apprise', type=str,  default=ENV("YK_APPRISE", ''),     help='apprise config (url or .yml file)')
     ADD('-c', '--cookies', type=str,  default=ENV("YK_COOKIES", ''),     help='path to cookies.txt (netscape format)')
