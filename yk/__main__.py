@@ -21,6 +21,8 @@ except ImportError:
 r"""
 todo:
     - web api
+    - jc good times
+    - regex cli
 """
 
 #########################

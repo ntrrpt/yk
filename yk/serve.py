@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import json
+import os
+import re
 import shutil
 import subprocess as sp
 import threading
@@ -35,70 +37,63 @@ def is_running(name: str = ''):
     return False
 
 
-def dlp_is_live(url, proxy_url: str = '', cookies_txt: str = ''):
+def is_live(
+    url,
+    chk_method: str = 'dlp',
+    proxy_url: str = '',
+    cookies_txt: str = '',
+    regex_title: str = '',
+    regex_desc: str = '',
+):
     if 'youtube' in url and 'watch?v=' not in url:
         url += '/live'
 
-    cmd = [
-        '--verbose',
-        '--dump-json', 
-        '--no-playlist',
-        '--playlist-items', "1",
-        '--remote-components', 'ejs:github'
-    ]  # fmt: skip
+    match chk_method:
+        case 'dlp':
+            cmd = [
+                'yt-dlp',
+                '--verbose',
+                '--dump-json', 
+                '--no-playlist',
+                '--playlist-items', "1",
+                '--remote-components', 'ejs:github'
+            ]  # fmt: skip
 
-    if proxy_url:
-        cmd += ['--proxy', proxy_url]
+            if proxy_url:
+                cmd += ['--proxy', proxy_url]
 
-    if Path(cookies_txt).is_file():
-        cmd += ['--cookies', cookies_txt]
+            if Path(cookies_txt).is_file():
+                cmd += ['--cookies', cookies_txt]
 
-    with sp.Popen(
-        ['yt-dlp'] + cmd + [url],
-        stdout=sp.PIPE,
-        stderr=sp.PIPE,
-        text=True,
-        encoding='utf-8',
-        errors='replace',
-    ) as proc:
-        stdout, stderr = proc.communicate()
-        online = False
+            cmd += [url]
 
-        if proc.poll() == 0:
-            try:
-                c_json = json.loads(stdout)
-                online = c_json.get('is_live') or False
-            except:  # noqa: E722
-                log.exception(
-                    f'failed to convert json info\n{util.fesc(stdout + stderr)}',
-                    cfg=url,
-                    cmd=cmd,
-                )
+        case 'str':
+            cmd = [
+                'streamlink', 
+                '--loglevel', 'trace', 
+                '--url', url
+            ]  # fmt: skip
 
-        log.trace(
-            f'dlp_is_live: {online}\n{util.fesc(stderr)}',
-            url=url,
-            proxy=proxy_url,
-            cookies_txt=cookies_txt,
-        )
+            if proxy_url:
+                cmd += ['--http-proxy', proxy_url]
 
-        return online
+            if Path(cookies_txt).is_file():
+                cmd += ['--http-cookies-file', cookies_txt]
 
+            if regex_title or regex_desc:
+                cmd += ['--json']
 
-def str_is_live(url, proxy_url: str = '', cookies_txt: str = ''):
-    if 'youtube' in url and 'watch?v=' not in url:
-        url += '/live'
-
-    cmd = ['--loglevel', 'trace', '--url', url]
-
-    if proxy_url:
-        cmd += ['--http-proxy', proxy_url]
-
-    if Path(cookies_txt).is_file():
-        cmd += ['--http-cookies-file', cookies_txt]
+        case _:
+            log.error(
+                f'is_live: invalid checker ({chk_method})',
+                url=url,
+                proxy=proxy_url,
+                cookies_txt=cookies_txt,
+            )
+            return False
 
     with sp.Popen(
-        ['streamlink'] + cmd,
+        cmd,
         stdout=sp.PIPE,
         stderr=sp.PIPE,
         text=True,
@@ -109,13 +104,68 @@ def str_is_live(url, proxy_url: str = '', cookies_txt: str = ''):
         online = proc.poll() == 0
         output = util.fesc(stdout + stderr)
 
+        if online and chk_method == 'dlp':
+            try:
+                c_json = json.loads(stdout)
+                online = c_json.get('is_live') or False
+            except:  # noqa: E722
+                log.exception(
+                    f'dlp_is_live: failed to convert json info\n{output}',
+                    cfg=url,
+                    cmd=cmd,
+                )
+                return False
+
         log.trace(
-            f'str_is_live: {online}\n{output}',
+            f'{chk_method}: {online}\n{output}',
             url=url,
             proxy=proxy_url,
             cookies_txt=cookies_txt,
             cmd=cmd,
         )
+
+        if online and (regex_title or regex_desc):
+            try:
+                c_json = json.loads(stdout)
+            except:  # noqa: E722
+                log.exception(
+                    f'regex: failed to convert json info\n{output}',
+                    cfg=url,
+                    cmd=cmd,
+                )
+                return False
+
+            title = c_json.get('metadata', {}).get('title') or c_json.get('title')
+            desc = c_json.get('metadata', {}).get('title') or c_json.get('description')
+
+            if chk_method == 'dlp' and c_json.get('extractor') == 'twitch:stream':
+                title = desc
+
+            if regex_title and title and re.findall(regex_title.lower(), title.lower()):
+                log.trace(
+                    f'title matched the regex: {url}',
+                    regex_title=regex_title.lower(),
+                    title=title.lower(),
+                )
+                return True
+
+            if regex_desc and desc and re.findall(regex_desc.lower(), desc.lower()):
+                log.trace(
+                    f'desc matched the regex: {url}',
+                    regex_desc=regex_desc.lower(),
+                    desc=desc.lower(),
+                )
+                return True
+
+            log.trace(
+                f'does not match the regex: {url}',
+                regex_title=regex_title.lower(),
+                title=title.lower(),
+                regex_desc=regex_desc.lower(),
+                desc=desc.lower(),
+            )
+            return False
+
         return online
 
 
@@ -179,18 +229,14 @@ def main(args):
                         _sleep()
                     continue
 
-                stream = None
-
-                match cfg['checker']:
-                    case 'str':
-                        stream = str_is_live(cfg['url'], cfg['proxy'], cfg['cookies'])
-
-                    case 'dlp':
-                        stream = dlp_is_live(cfg['url'], cfg['proxy'], cfg['cookies'])
-
-                    case _:
-                        log.error(f'invalid checker: {cfg["checker"]}', cfg=cfg)
-                        continue
+                stream = is_live(
+                    url=cfg['url'],
+                    chk_method=cfg['checker'],
+                    proxy_url=cfg['proxy'],
+                    cookies_txt=cfg['cookies'],
+                    regex_title=cfg['regex_title'],
+                    regex_desc=cfg['regex_desc'],
+                )
 
                 if cfg['health']:
                     if not stream:
@@ -209,11 +255,24 @@ def main(args):
                             i=args.urls + args.input, args=args, cfg_to_del=cfg
                         )
 
-                    cfg['event'] = unload
                     t = threading.Thread(
                         target=record.main,
                         name=cfg['url'],
-                        kwargs=cfg,
+                        kwargs={
+                            # cfg args
+                            'url': cfg['url'],
+                            'quality': cfg['quality'],
+                            'output': cfg['output'],
+                            'folder': cfg['folder'],
+                            'proxy': cfg['proxy'],
+                            'apprise': cfg['apprise'],
+                            'cookies': cfg['cookies'],
+                            'bgutil': cfg['bgutil'],
+                            'recorder': cfg['recorder'],
+                            'arguments': cfg['arguments'],
+                            # non-cfg args
+                            'event': unload,
+                        },
                     )
                     t.start()
 
@@ -222,6 +281,17 @@ def main(args):
                     % (i, len(channels), threading.active_count() - 1),
                     threads=get_threads(),
                 )
+
+                if os.environ.get('YK_DBG_COOKIES') and Path(cfg['cookies']).is_file():
+                    import hashlib
+
+                    md5 = hashlib.md5()
+
+                    with open(cfg['cookies'], 'rb') as f:
+                        for chunk in iter(lambda: f.read(4096), b''):
+                            md5.update(chunk)
+
+                    log.warning(f'{cfg["cookies"]}: {md5.hexdigest()}')
 
                 _sleep()
 

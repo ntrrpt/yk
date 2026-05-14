@@ -10,7 +10,7 @@ import tomli_w
 from loguru import logger as log
 from validators import url as is_url
 
-from . import util
+from yk import util
 
 
 def parse(i: list = [], args=None, cfg_to_del: dict = {}):

@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-import re
 import shlex
 import shutil
 import signal
@@ -28,8 +27,6 @@ def main(
     quality: str = 'best',  # quality of stream
     output: str = '',  # output path
     folder: str = '',  # subpath (output/folder)
-    regex_title: str = '',  # regex for stream title
-    regex_desc: str = '',  # regex for stream description
     proxy: str = '',  # proxy for all connections (except apprise)
     apprise: str = '',  # apprise url / path to yaml
     cookies: str = '',  # path to cookies file (netscape format)
@@ -38,10 +35,6 @@ def main(
     arguments: str = '',  # recording tool cli args
     # non-cfg args
     event: threading.Event = threading.Event(),  # for graceful shutdown
-    # unused (compatiblity for **cfg)
-    health: bool = False,
-    checker: bool = False,
-    delete: bool = False,
 ):
 
     _cfg = {
@@ -49,8 +42,6 @@ def main(
         quality: quality,
         output: output,
         folder: folder,
-        regex_title: regex_title,
-        regex_desc: regex_desc,
         proxy: proxy,
         apprise: apprise,
         cookies: cookies,
@@ -126,15 +117,6 @@ def main(
 
     str_title = util.esc(str_title)
     str_user = util.esc(str_user)
-
-    # regex filtering
-    if regex_title:
-        if not re.findall(regex_title.lower(), str_title.lower()):
-            return
-
-    if regex_desc and str_json.get('description'):
-        if not re.findall(regex_desc.lower(), str_json['description'].lower()):
-            return
 
     # [YY_MM_DD hh_mm_ss] username - livestream title
     str_name = util.esc(f'[{util.dt_now()}] {str_user} - {str_title}')
