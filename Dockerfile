@@ -3,7 +3,7 @@ FROM golang:alpine AS ytarchive_builder
 WORKDIR /yta
 
 RUN apk add --no-cache --progress git
-RUN git clone --revision=742674da1fa618365074de714b9517cc79d1bb38 https://github.com/dreammu/ytarchive /yta/git
+RUN git clone --branch v0.5.2 https://github.com/dreammu/ytarchive /yta/git
 RUN go build -C /yta/git -ldflags="-s -w" -o /yta/bin -v
 
 # .venv & tools
