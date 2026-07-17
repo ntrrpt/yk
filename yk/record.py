@@ -181,8 +181,8 @@ def main(
         case 'dlp':
             c = ['yt-dlp'] + shlex.split(arguments)
 
-            if 'youtube' in str_json['extractor']:
-                c += ['--live-from-start']
+            if not util.con(['youtube', 'twitch'], str_json['extractor']):
+                c = [x for x in c if x != '--live-from-start']
 
             if proxy:
                 c += ['--proxy', proxy]
