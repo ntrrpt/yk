@@ -21,7 +21,7 @@ except ImportError:
 r"""
 todo:
     - web api
-    - jc good times
+    - jc good times (fix desync)
     - regex cli
 """
 
@@ -39,7 +39,7 @@ C_STREAMLINK = ' '.join([
     "--hls-segment-ignore-names",       "preloading",
     "--hls-playlist-reload-attempts",   "30",
     "--hls-live-edge",                  "5",
-    "--stream-timeout",                 "120",
+    "--stream-timeout",                 "180",
     "--ringbuffer-size",                "64M",
     "--loglevel",                       "trace"
 ])  # fmt: skip
@@ -47,6 +47,7 @@ C_STREAMLINK = ' '.join([
 C_YTDLP = ' '.join([
     "--verbose",
     "--ignore-config",
+    "--live-from-start",
     "--remote-components",      "ejs:github",
     "--merge-output-format",    "mp4",
     "--concurrent-fragments",   "3",
@@ -59,6 +60,7 @@ C_YTARCHIVE = ' '.join([
     "--no-save-state",
     "--write-mux-file",
     "--no-merge",
+    "--no-wait",
     '--add-metadata',
     "--threads",        "3"
 ])  # fmt: skip
